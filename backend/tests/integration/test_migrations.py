@@ -15,6 +15,7 @@ the migrations and db_session teardown (row deletion) continues to work.
 import asyncio
 import os
 import subprocess
+import sys
 
 import app.models  # noqa: F401 — register all models so drop_all is complete
 from app.config import settings
@@ -48,7 +49,7 @@ def test_migrations_run_and_are_current() -> None:
 
     # --- 2. Upgrade head ------------------------------------------------------
     result = subprocess.run(
-        ["python", "-m", "alembic", "upgrade", "head"],
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
         env=env,
         capture_output=True,
         text=True,
@@ -61,7 +62,7 @@ def test_migrations_run_and_are_current() -> None:
 
     # --- 3. Drift check -------------------------------------------------------
     result = subprocess.run(
-        ["python", "-m", "alembic", "check"],
+        [sys.executable, "-m", "alembic", "check"],
         env=env,
         capture_output=True,
         text=True,
