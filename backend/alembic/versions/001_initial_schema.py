@@ -34,8 +34,8 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
+        sa.UniqueConstraint("email"),
     )
-    op.create_index("ix_users_email", "users", ["email"], unique=True)
 
     # --- topics ---
     op.create_table(
@@ -198,7 +198,6 @@ def downgrade() -> None:
     op.drop_table("task_topics")
     op.drop_table("tasks")
     op.drop_table("topics")
-    op.drop_index("ix_users_email", table_name="users")
     op.drop_table("users")
 
     op.execute(sa.text("DROP TYPE recurringfrequency"))
