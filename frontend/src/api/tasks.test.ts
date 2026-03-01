@@ -38,8 +38,8 @@ describe('tasks api', () => {
 
   it('getTasks passes filter params', async () => {
     vi.mocked(client.get).mockResolvedValue({ data: { success: true, data: [] } })
-    await getTasks({ search: 'hello' })
-    expect(client.get).toHaveBeenCalledWith('/tasks', { params: { search: 'hello' } })
+    await getTasks({ q: 'hello' })
+    expect(client.get).toHaveBeenCalledWith('/tasks', { params: { q: 'hello' } })
   })
 
   it('getTask calls GET /tasks/:id', async () => {
@@ -74,7 +74,7 @@ describe('tasks api', () => {
 
   it('updateTaskOrder calls PATCH /tasks/:id/order', async () => {
     vi.mocked(client.patch).mockResolvedValue({ data: mockResponse })
-    await updateTaskOrder('1', { order: 2 })
-    expect(client.patch).toHaveBeenCalledWith('/tasks/1/order', { order: 2 })
+    await updateTaskOrder('1', { manual_order: 2 })
+    expect(client.patch).toHaveBeenCalledWith('/tasks/1/order', { manual_order: 2 })
   })
 })
