@@ -3,7 +3,7 @@ Task repository — all database queries for tasks.
 No business logic here.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,21 +50,27 @@ class TaskRepository:
         await self._session.flush()  # get the task.id before loading topics
 
         if topic_ids:
-            topics_result = await self._session.execute(
-                select(Topic).where(Topic.id.in_(topic_ids))
+            valid_topic_ids_result = await self._session.execute(
+                select(Topic.id).where(
+                    and_(Topic.id.in_(topic_ids), Topic.user_id == user_id)
+                )
             )
-            task.topics = list(topics_result.scalars().all())
+            valid_topic_ids = valid_topic_ids_result.scalars().all()
+            if valid_topic_ids:
+                await self._session.execute(
+                    task_topics.insert(),
+                    [{"task_id": task.id, "topic_id": tid} for tid in valid_topic_ids],
+                )
 
         await self._session.commit()
-        await self._session.refresh(task)
-        return task
+        return await self.get_by_id(task.id)
 
     async def update(self, task_id: uuid.UUID, **fields) -> Task:
         # Remove topic_ids from fields — handled separately
         topic_ids = fields.pop("topic_ids", None)
 
         if fields:
-            fields["updated_at"] = datetime.utcnow()
+            fields["updated_at"] = datetime.now(tz=timezone.utc)
             await self._session.execute(
                 update(Task).where(Task.id == task_id).values(**fields)
             )
@@ -101,7 +107,7 @@ class TaskRepository:
         Active tasks = status in (todo, in_progress) OR (status=done AND done_at >= today_4am).
         """
         if now is None:
-            now = datetime.utcnow()
+            now = datetime.now(tz=timezone.utc)
 
         today_4am, _ = get_day_window(now)
 
@@ -121,9 +127,13 @@ class TaskRepository:
         # Time window filter
         if window == "today":
             _, today_end = get_day_window(now)
+            # Include tasks with no due_date (floating) OR tasks due within today's window.
             stmt = stmt.where(
-                or_(Task.due_date.is_(None) == False, Task.due_date <= today_end)
-            ).where(Task.due_date >= today_4am)
+                or_(
+                    Task.due_date.is_(None),
+                    and_(Task.due_date >= today_4am, Task.due_date <= today_end),
+                )
+            )
         elif window == "3days":
             from datetime import timedelta
             three_days_end = now + timedelta(days=3)
@@ -193,7 +203,7 @@ class TaskRepository:
 
     async def bulk_archive(self, task_ids: list[uuid.UUID]) -> None:
         """Mark all given task IDs as archived."""
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
         await self._session.execute(
             update(Task)
             .where(Task.id.in_(task_ids))

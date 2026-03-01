@@ -12,6 +12,21 @@ jobs:
     name: Backend Tests
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: todoapp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U user -d todoapp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,9 +42,21 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: backend
 
-      - name: Run tests with coverage
-        run: pytest --cov=app --cov-fail-under=80 tests/
+      - name: Check migrations are current
+        run: pytest tests/integration/test_migrations.py -v
         working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://user:pass@localhost:5432/todoapp_test
+          TEST_DATABASE_URL: postgresql+asyncpg://user:pass@localhost:5432/todoapp_test
+          SECRET_KEY: ci-only-secret-not-used-in-production
+
+      - name: Run tests with coverage
+        run: pytest --cov=app --cov-fail-under=80 --ignore=tests/integration/test_migrations.py tests/
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://user:pass@localhost:5432/todoapp_test
+          TEST_DATABASE_URL: postgresql+asyncpg://user:pass@localhost:5432/todoapp_test
+          SECRET_KEY: ci-only-secret-not-used-in-production
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:
@@ -71,3 +98,53 @@ jobs:
 
       - name: Build all Docker images
         run: docker compose build
+
+  # ── E2E tests ──────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "SECRET_KEY=ci-only-secret-not-used-in-production" > .env
+
+      - name: Start Docker Compose stack
+        run: docker compose up -d --build
+
+      - name: Wait for frontend to be ready
+        run: |
+          timeout 60 bash -c 'until curl -sf http://localhost:80; do sleep 2; done'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:80
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

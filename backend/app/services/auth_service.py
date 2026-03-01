@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.auth.jwt import create_access_token, create_refresh_token, verify_refresh_token
 from app.config import settings
+from app.exceptions import AppError
 from app.models.user import User
 
 
@@ -23,11 +24,11 @@ class AuthService:
         Create a new user account.
 
         Raises:
-            ValueError: If the email is already in use.
+            AppError: If the email is already in use.
         """
         existing = await self._user_repo.get_by_email(email)
         if existing is not None:
-            raise ValueError("Email already in use")
+            raise AppError("Email already in use")
 
         hashed = self._hasher.hash(password)
         return await self._user_repo.create(email=email, hashed_password=hashed)
@@ -39,11 +40,11 @@ class AuthService:
         Authenticate a user and return (access_token, refresh_token).
 
         Raises:
-            ValueError: On invalid credentials (generic message for security).
+            AppError: On invalid credentials (generic message for security).
         """
         user = await self._user_repo.get_by_email(email)
         if user is None or not self._hasher.verify(password, user.hashed_password):
-            raise ValueError("Invalid credentials")
+            raise AppError("Invalid credentials")
 
         access_token = create_access_token(user_id=user.id)
         raw_refresh, token_hash = _generate_refresh_token()
@@ -63,14 +64,14 @@ class AuthService:
         Exchange a valid refresh token for a new access token.
 
         Raises:
-            ValueError: If the refresh token is invalid, expired, or revoked.
+            AppError: If the refresh token is invalid, expired, or revoked.
         """
         token_hash = _hash_token(raw_refresh_token)
         record = await self._token_repo.get_by_hash(token_hash)
         if record is None or record.revoked:
-            raise ValueError("Invalid refresh token")
+            raise AppError("Invalid refresh token")
         if record.expires_at < datetime.now(tz=timezone.utc):
-            raise ValueError("Refresh token expired")
+            raise AppError("Refresh token expired")
 
         return create_access_token(user_id=record.user_id)
 

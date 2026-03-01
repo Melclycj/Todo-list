@@ -6,6 +6,7 @@ import uuid
 from calendar import monthrange
 from datetime import datetime, timedelta, timezone
 
+from app.exceptions import AppError
 from app.models.recurring import RecurringFrequency, RecurringTemplate
 from app.models.task import Task, TaskStatus
 from app.services.task_service import build_instance_title
@@ -84,7 +85,7 @@ class RecurringService:
 
         title = title.strip() if title else ""
         if not title:
-            raise ValueError("Title must not be empty")
+            raise AppError("Title must not be empty")
 
         topic_ids = topic_ids or []
 
@@ -222,7 +223,7 @@ class RecurringService:
         if title is not None:
             title = title.strip()
             if not title:
-                raise ValueError("Title must not be empty")
+                raise AppError("Title must not be empty")
             update_fields["title"] = title
         if description is not None:
             update_fields["description"] = description

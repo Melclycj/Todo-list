@@ -50,7 +50,7 @@ class Task(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
-        Enum(TaskStatus, name="taskstatus", create_type=True),
+        Enum(TaskStatus, name="taskstatus", create_type=False, values_callable=lambda x: [e.value for e in x]),
         default=TaskStatus.TODO,
         nullable=False,
     )

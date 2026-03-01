@@ -7,6 +7,8 @@ import logging
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
+from app.exceptions import AppError
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +43,12 @@ async def permission_error_handler(request: Request, exc: Exception) -> JSONResp
     )
 
 
-async def value_error_handler(request: Request, exc: Exception) -> JSONResponse:
+async def app_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Handle intentional AppError exceptions raised by service layer.
+    Only AppError messages are safe to expose; plain ValueError from
+    third-party code falls through to global_exception_handler (500).
+    """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"success": False, "data": None, "error": str(exc)},

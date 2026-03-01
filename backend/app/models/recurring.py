@@ -58,7 +58,7 @@ class RecurringTemplate(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     frequency: Mapped[RecurringFrequency] = mapped_column(
-        Enum(RecurringFrequency, name="recurringfrequency", create_type=True),
+        Enum(RecurringFrequency, name="recurringfrequency", create_type=False, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

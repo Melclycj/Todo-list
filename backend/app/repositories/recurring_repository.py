@@ -52,8 +52,7 @@ class RecurringRepository:
             template.topics = list(topics_result.scalars().all())
 
         await self._session.commit()
-        await self._session.refresh(template)
-        return template
+        return await self.get_by_id(template.id)
 
     async def update(self, template_id: uuid.UUID, **fields) -> RecurringTemplate | None:
         topic_ids = fields.pop("topic_ids", None)

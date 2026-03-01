@@ -12,11 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.exceptions import AppError
 from app.middleware.error_handler import (
+    app_error_handler,
     global_exception_handler,
     not_found_handler,
     permission_error_handler,
-    value_error_handler,
 )
 
 # Routers (imported lazily to avoid circular imports at module level)
@@ -59,7 +60,9 @@ app.add_middleware(
 app.add_exception_handler(Exception, global_exception_handler)
 app.add_exception_handler(LookupError, not_found_handler)
 app.add_exception_handler(PermissionError, permission_error_handler)
-app.add_exception_handler(ValueError, value_error_handler)
+# AppError (subclass of ValueError) — intentional business-rule violations only.
+# Plain ValueError from third-party code falls through to global_exception_handler (500).
+app.add_exception_handler(AppError, app_error_handler)
 
 # Register API routers
 app.include_router(auth.router, prefix="/api/v1")

@@ -4,6 +4,7 @@ Task service — business logic for task CRUD, status transitions, and archiving
 import uuid
 from datetime import datetime, timezone
 
+from app.exceptions import AppError
 from app.models.task import Task, TaskStatus
 
 
@@ -31,13 +32,13 @@ def validate_status_transition(
     - Done        → To Do  (Reopen)
     """
     if new == current:
-        raise ValueError(
+        raise AppError(
             f"Invalid status transition: {current.value} → {new.value} "
             "(same status)"
         )
     allowed = _VALID_TRANSITIONS.get(current, set())
     if new not in allowed:
-        raise ValueError(
+        raise AppError(
             f"Invalid status transition: {current.value} → {new.value}"
         )
 
@@ -69,7 +70,7 @@ def build_instance_title(base_title: str, instance_date: datetime) -> str:
     Uses em dash (–) with surrounding spaces as the separator, per FR-06.
     """
     if not base_title or not base_title.strip():
-        raise ValueError("Title must not be empty")
+        raise AppError("Title must not be empty")
     date_str = instance_date.strftime("%Y-%m-%d")
     return f"{base_title} \u2013 {date_str}"
 
@@ -105,9 +106,9 @@ class TaskService:
         """Create a new task for the given user."""
         title = title.strip() if title else ""
         if not title:
-            raise ValueError("Title must not be empty")
+            raise AppError("Title must not be empty")
         if len(title) > 255:
-            raise ValueError("Title must not exceed 255 characters")
+            raise AppError("Title must not exceed 255 characters")
 
         task = await self._task_repo.create(
             user_id=user_id,
@@ -285,7 +286,7 @@ class TaskService:
         if task.user_id != user_id:
             raise PermissionError("Not authorized")
         if not task.archived:
-            raise ValueError("Task is not archived")
+            raise AppError("Task is not archived")
         return await self._task_repo.update(
             task_id,
             archived=False,

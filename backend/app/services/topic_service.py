@@ -3,6 +3,7 @@ Topic service — CRUD for user-defined task categories.
 """
 import uuid
 
+from app.exceptions import AppError
 from app.models.topic import Topic
 
 
@@ -15,13 +16,13 @@ class TopicService:
     async def create_topic(self, user_id: uuid.UUID, name: str) -> Topic:
         name = name.strip()
         if not name:
-            raise ValueError("Topic name must not be empty")
+            raise AppError("Topic name must not be empty")
         if len(name) > 100:
-            raise ValueError("Topic name must not exceed 100 characters")
+            raise AppError("Topic name must not exceed 100 characters")
 
         existing = await self._topic_repo.get_by_name(user_id=user_id, name=name)
         if existing is not None:
-            raise ValueError(f"Topic '{name}' already exists")
+            raise AppError(f"Topic '{name}' already exists")
 
         return await self._topic_repo.create(user_id=user_id, name=name)
 
@@ -33,9 +34,9 @@ class TopicService:
     ) -> Topic:
         new_name = new_name.strip()
         if not new_name:
-            raise ValueError("Topic name must not be empty")
+            raise AppError("Topic name must not be empty")
         if len(new_name) > 100:
-            raise ValueError("Topic name must not exceed 100 characters")
+            raise AppError("Topic name must not exceed 100 characters")
 
         topic = await self._topic_repo.get_by_id(topic_id)
         if topic is None:
@@ -45,7 +46,7 @@ class TopicService:
 
         existing = await self._topic_repo.get_by_name(user_id=user_id, name=new_name)
         if existing is not None and existing.id != topic_id:
-            raise ValueError(f"Topic '{new_name}' already exists")
+            raise AppError(f"Topic '{new_name}' already exists")
 
         return await self._topic_repo.update(topic_id, name=new_name)
 

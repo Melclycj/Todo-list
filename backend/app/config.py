@@ -10,7 +10,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://user:pass@localhost:5432/todoapp"
     test_database_url: str = "postgresql+asyncpg://user:pass@localhost:5432/todoapp_test"
-    secret_key: str = "dev-secret-key-change-in-production"
+    # No default — app refuses to start if SECRET_KEY is not set in the environment.
+    secret_key: str
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     db_pool_size: int = 10
