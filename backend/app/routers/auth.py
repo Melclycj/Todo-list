@@ -89,5 +89,5 @@ async def logout(
             await service.logout(raw_refresh_token=refresh_token)
         except Exception:
             pass  # still clear the cookie even if token was already invalid
-    response.delete_cookie("refresh_token")
+    response.delete_cookie("refresh_token", httponly=True, secure=True, samesite="lax")
     return ApiResponse.ok(None)

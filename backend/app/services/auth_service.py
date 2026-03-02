@@ -5,7 +5,7 @@ import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from app.auth.jwt import create_access_token, create_refresh_token, verify_refresh_token
+from app.auth.jwt import create_access_token
 from app.config import settings
 from app.exceptions import AppError
 from app.models.user import User

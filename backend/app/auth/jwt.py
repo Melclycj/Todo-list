@@ -30,38 +30,6 @@ def create_access_token(user_id: uuid.UUID) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: uuid.UUID) -> str:
-    """
-    Create a long-lived JWT refresh token.
-    NOTE: The raw token is stored (hashed) in the DB for revocation.
-    Expiry is controlled by settings.refresh_token_expire_days.
-    """
-    expire = datetime.now(tz=timezone.utc) + timedelta(
-        days=settings.refresh_token_expire_days
-    )
-    payload: dict[str, Any] = {
-        "sub": str(user_id),
-        "exp": expire,
-        "type": "refresh",
-    }
-    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
-
-
-def verify_refresh_token(token: str) -> uuid.UUID:
-    """
-    Verify a refresh token and return the user_id.
-
-    Raises:
-        ValueError: If the token is invalid or expired.
-    """
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-        if payload.get("type") != "refresh":
-            raise ValueError("Not a refresh token")
-        return uuid.UUID(payload["sub"])
-    except JWTError as exc:
-        raise ValueError("Invalid token") from exc
-
 
 def decode_access_token(token: str) -> uuid.UUID:
     """
