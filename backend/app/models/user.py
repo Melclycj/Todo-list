@@ -45,7 +45,7 @@ class RefreshToken(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked: Mapped[bool] = mapped_column(default=False, nullable=False)
 

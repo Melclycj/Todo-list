@@ -2,9 +2,10 @@
 Auth router — /api/v1/auth/*
 HTTP layer only: parse request, call service, return response.
 """
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 
 from app.database import get_db
+from app.limiter import limiter
 from app.repositories.user_repository import RefreshTokenRepository, UserRepository
 from app.schemas.common import ApiResponse
 from app.schemas.user import (
@@ -39,7 +40,9 @@ def _get_auth_service(session: AsyncSession = Depends(get_db)) -> AuthService:
 
 
 @router.post("/register", response_model=ApiResponse[UserResponse], status_code=201)
+@limiter.limit("3/minute")
 async def register(
+    request: Request,
     body: UserRegisterRequest,
     service: AuthService = Depends(_get_auth_service),
 ):
@@ -48,7 +51,9 @@ async def register(
 
 
 @router.post("/login", response_model=ApiResponse[TokenResponse])
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     body: UserLoginRequest,
     response: Response,
     service: AuthService = Depends(_get_auth_service),
@@ -68,7 +73,9 @@ async def login(
 
 
 @router.post("/refresh", response_model=ApiResponse[TokenResponse])
+@limiter.limit("10/minute")
 async def refresh_token(
+    request: Request,
     refresh_token: str | None = Cookie(default=None),
     service: AuthService = Depends(_get_auth_service),
 ):
