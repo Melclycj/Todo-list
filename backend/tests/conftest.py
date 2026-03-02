@@ -16,6 +16,7 @@ import uuid
 # secret_key so that production deployments fail loudly when the env var is
 # missing. Tests supply a throwaway value here.
 os.environ.setdefault("SECRET_KEY", "test-only-secret-not-for-production")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import pytest
 from httpx import ASGITransport, AsyncClient
