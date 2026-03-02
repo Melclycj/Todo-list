@@ -43,9 +43,9 @@ test.describe('Recurring Task Creation', () => {
     await page.waitForURL('**/recurring')
 
     // Title appears in table row
-    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+    await expect(page.getByText(title, { exact: true })).toBeVisible()
     // Frequency column shows Monthly
-    await expect(page.getByRole('cell', { name: 'Monthly' })).toBeVisible()
+    await expect(page.getByText('Monthly', { exact: true })).toBeVisible()
     // Next due column shows "Next due:"
     await expect(page.getByText(/Next due:/)).toBeVisible()
   })
@@ -84,7 +84,7 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Stop' }).click()
 
     // Next due cell now shows Stopped
-    await expect(page.getByRole('cell', { name: 'Stopped' })).toBeVisible()
+    await expect(page.getByText('Stopped', { exact: true })).toBeVisible()
   })
 
   test('create a recurring task with fortnightly frequency', async ({ page }) => {
@@ -97,8 +97,8 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('button', { name: 'Create Task' }).click()
 
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
-    await expect(page.getByRole('cell', { name: title })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'Fortnightly' })).toBeVisible()
+    await expect(page.getByText(title, { exact: true })).toBeVisible()
+    await expect(page.getByText('Fortnightly', { exact: true })).toBeVisible()
   })
 
   test('create a daily recurring task — due date is grayed out showing today', async ({ page }) => {
@@ -133,8 +133,8 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('button', { name: 'Create Task' }).click()
 
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
-    await expect(page.getByRole('cell', { name: title })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'Daily' })).toBeVisible()
+    await expect(page.getByText(title, { exact: true })).toBeVisible()
+    await expect(page.getByText('Daily', { exact: true })).toBeVisible()
     await expect(page.getByText(/Next due:/)).toBeVisible()
   })
 

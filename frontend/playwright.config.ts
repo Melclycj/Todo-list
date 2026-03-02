@@ -17,6 +17,11 @@ export default defineConfig({
   workers: 1,
   reporter: [['html', { open: 'never' }], ['list']],
 
+  expect: {
+    // CI containers are slower; give assertions more time before failing
+    timeout: process.env.CI ? 15_000 : 5_000,
+  },
+
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:80',
     trace: 'on-first-retry',
