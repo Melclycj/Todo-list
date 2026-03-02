@@ -7,6 +7,7 @@ const FALLBACK_POLL_MS = 60_000
 
 export function useReminder() {
   const [message, setMessage] = useState<string>('')
+  const mountedRef = useRef(false)
   const retryCountRef = useRef(0)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -23,17 +24,20 @@ export function useReminder() {
     usingFallbackRef.current = true
 
     pollIntervalRef.current = setInterval(() => {
+      if (!mountedRef.current) return
       void getReminder().then((res) => {
-        if (res.data?.message) setMessage(res.data.message)
+        if (mountedRef.current && res.data?.message) setMessage(res.data.message)
       })
     }, FALLBACK_POLL_MS)
   }
 
   function connect() {
+    if (!mountedRef.current) return
     const es = createReminderStream()
     esRef.current = es
 
     es.onmessage = (event: MessageEvent) => {
+      if (!mountedRef.current) return
       try {
         const parsed = JSON.parse(event.data as string) as { message: string }
         setMessage(parsed.message)
@@ -46,6 +50,8 @@ export function useReminder() {
     es.onerror = () => {
       es.close()
       esRef.current = null
+
+      if (!mountedRef.current) return
 
       if (retryCountRef.current >= MAX_RETRIES) {
         startPollingFallback()
@@ -62,14 +68,17 @@ export function useReminder() {
   }
 
   useEffect(() => {
+    mountedRef.current = true
+
     // Fetch initial message immediately
     void getReminder().then((res) => {
-      if (res.data?.message) setMessage(res.data.message)
+      if (mountedRef.current && res.data?.message) setMessage(res.data.message)
     })
 
     connect()
 
     return () => {
+      mountedRef.current = false
       esRef.current?.close()
       clearTimers()
     }

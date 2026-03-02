@@ -25,6 +25,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 30_000,
+      gcTime: 5 * 60 * 1000, // Remove inactive queries from cache after 5 minutes
     },
   },
 })

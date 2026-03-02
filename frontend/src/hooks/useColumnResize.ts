@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 
 const STORAGE_KEY = 'taskTableColumnWidths_v2'
@@ -36,6 +36,12 @@ function readSavedWidths(): Record<ColumnKey, number> {
 
 export function useColumnResize() {
   const [widths, setWidths] = useState<Record<ColumnKey, number>>(readSavedWidths)
+  const cleanupRef = useRef<(() => void) | null>(null)
+
+  // Guarantee listeners are removed if the component unmounts mid-drag
+  useEffect(() => {
+    return () => { cleanupRef.current?.() }
+  }, [])
 
   function startColumnDrag(column: ColumnKey, e: MouseEvent) {
     e.preventDefault()
@@ -47,16 +53,22 @@ export function useColumnResize() {
       setWidths((prev) => ({ ...prev, [column]: newWidth }))
     }
 
+    function cleanup() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      cleanupRef.current = null
+    }
+
     function onMouseUp(event: globalThis.MouseEvent) {
       const finalWidth = Math.max(80, startWidth + (event.clientX - startX))
       const updated = { ...widths, [column]: finalWidth }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
+      cleanup()
     }
 
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
+    cleanupRef.current = cleanup
   }
 
   return { widths, startColumnDrag }
