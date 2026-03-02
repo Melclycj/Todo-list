@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost"
     rate_limit_enabled: bool = True
     # Override these in production with stricter values via env vars
-    register_rate_limit: str = "20/minute"
-    login_rate_limit: str = "30/minute"
-    refresh_rate_limit: str = "60/minute"
+    register_rate_limit: str = "100/minute"
+    login_rate_limit: str = "100/minute"
+    refresh_rate_limit: str = "200/minute"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     db_pool_size: int = 10
