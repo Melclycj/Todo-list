@@ -1,24 +1,37 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
 
-const STORAGE_KEY = 'taskTableColumnWidths'
+const STORAGE_KEY = 'taskTableColumnWidths_v2'
 
 export type ColumnKey = 'status' | 'title' | 'dueDate' | 'description'
 
-const DEFAULT_WIDTHS: Record<ColumnKey, number> = {
-  status: 130,
-  title: 280,
-  dueDate: 120,
-  description: 240,
+// Proportions of the full viewport width used as the one-time computed default.
+// Adjust these values to rebalance columns. They do not need to sum to 1.
+const COLUMN_PROPORTIONS: Record<ColumnKey, number> = {
+  status: 0.15,
+  title: 0.15,
+  dueDate: 0.15,
+  description: 0.40,
+}
+
+function computeDefaultWidths(): Record<ColumnKey, number> {
+  const vw = window.innerWidth
+  return {
+    status: Math.round(vw * COLUMN_PROPORTIONS.status),
+    title: Math.round(vw * COLUMN_PROPORTIONS.title),
+    dueDate: Math.round(vw * COLUMN_PROPORTIONS.dueDate),
+    description: Math.round(vw * COLUMN_PROPORTIONS.description),
+  }
 }
 
 function readSavedWidths(): Record<ColumnKey, number> {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? { ...DEFAULT_WIDTHS, ...JSON.parse(saved) } : DEFAULT_WIDTHS
+    if (saved) return { ...computeDefaultWidths(), ...JSON.parse(saved) }
   } catch {
-    return DEFAULT_WIDTHS
+    // fall through to computed defaults
   }
+  return computeDefaultWidths()
 }
 
 export function useColumnResize() {
