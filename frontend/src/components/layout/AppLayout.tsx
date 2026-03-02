@@ -3,16 +3,24 @@ import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { Button } from '@/components/ui/button'
+import { useSidebarResize } from '@/hooks/useSidebarResize'
 
 export function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const { width: sidebarWidth, startDrag } = useSidebarResize()
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-[260px] flex-shrink-0">
+      <aside className="hidden lg:flex flex-shrink-0" style={{ width: sidebarWidth }}>
         <Sidebar />
       </aside>
+
+      {/* Drag handle — always visible, desktop only */}
+      <div
+        className="hidden lg:block w-0.5 flex-shrink-0 cursor-col-resize bg-border hover:bg-primary transition-colors"
+        onMouseDown={startDrag}
+      />
 
       {/* Mobile sidebar overlay */}
       {mobileSidebarOpen && (
@@ -42,11 +50,9 @@ export function AppLayout() {
           <span className="font-semibold text-foreground">Todo</span>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-6 py-8">
-            <Outlet />
-          </div>
+        {/* Page content fills remaining space */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <Outlet />
         </main>
       </div>
     </div>

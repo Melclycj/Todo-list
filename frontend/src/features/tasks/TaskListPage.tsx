@@ -1,25 +1,31 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TaskList } from './TaskList'
 import { TaskSearchBar } from './TaskSearchBar'
 import { TaskCreateDrawer } from './TaskCreateDrawer'
+import { TaskFilterDropdown } from './TaskFilterDropdown'
 import { useTasks } from '@/hooks/useTasks'
 import { useDebounce } from '@/hooks/useDebounce'
 import type { TaskFilterWindow } from '@/types/task'
 
-const FILTER_LABELS: Record<string, string> = {
+const FILTER_LABELS: Record<TaskFilterWindow, string> = {
+  all: 'All Tasks',
   today: 'Today',
   '3days': 'Within 3 Days',
   week: 'Within a Week',
-  all: 'All Tasks',
+}
+
+const STORAGE_KEY = 'taskFilterWindow'
+
+function readSavedFilter(): TaskFilterWindow {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved && saved in FILTER_LABELS) return saved as TaskFilterWindow
+  return 'all'
 }
 
 export function TaskListPage() {
-  const [searchParams] = useSearchParams()
-  const filterWindow = (searchParams.get('window') ?? 'all') as TaskFilterWindow
-
+  const [filterWindow, setFilterWindow] = useState<TaskFilterWindow>(readSavedFilter)
   const [searchQuery, setSearchQuery] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -30,36 +36,44 @@ export function TaskListPage() {
     q: debouncedQuery || undefined,
   })
 
-  const pageTitle = FILTER_LABELS[filterWindow] ?? 'Active Tasks'
+  function handleFilterChange(value: TaskFilterWindow) {
+    setFilterWindow(value)
+    localStorage.setItem(STORAGE_KEY, value)
+  }
+
+  const pageTitle = FILTER_LABELS[filterWindow]
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
-        <Button size="sm" onClick={() => setDrawerOpen(true)}>
-          <Plus size={14} />
-          New Task
-        </Button>
+      <div className="flex items-center justify-between px-6 py-4 gap-4 flex-shrink-0 border-b border-border">
+        <div className="flex items-center gap-2">
+          <TaskFilterDropdown value={filterWindow} onChange={handleFilterChange} />
+          <TaskSearchBar value={searchQuery} onChange={setSearchQuery} />
+        </div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-bold text-foreground hidden sm:block">{pageTitle}</h1>
+          <Button size="sm" onClick={() => setDrawerOpen(true)}>
+            <Plus size={14} />
+            New Task
+          </Button>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
-        <TaskSearchBar value={searchQuery} onChange={setSearchQuery} />
+      {/* Task table — fills remaining space */}
+      <div className="flex-1 overflow-hidden p-4">
+        <TaskList
+          tasks={tasks}
+          isLoading={isLoading}
+          filterWindow={filterWindow}
+          isSearch={!!debouncedQuery}
+          searchQuery={debouncedQuery}
+          onCreateTask={() => setDrawerOpen(true)}
+        />
       </div>
-
-      {/* Task list */}
-      <TaskList
-        tasks={tasks}
-        isLoading={isLoading}
-        filterWindow={filterWindow}
-        isSearch={!!debouncedQuery}
-        searchQuery={debouncedQuery}
-        onCreateTask={() => setDrawerOpen(true)}
-      />
 
       {/* Create task drawer */}
       <TaskCreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </>
+    </div>
   )
 }

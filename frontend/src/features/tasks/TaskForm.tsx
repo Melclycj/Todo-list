@@ -35,7 +35,10 @@ export function TaskForm({
 
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [description, setDescription] = useState(initialValues?.description ?? '')
-  const [dueDate, setDueDate] = useState<string | null>(initialValues?.dueDate ?? null)
+  // Internal state stores date-only string (YYYY-MM-DD) for the date input
+  const [dueDate, setDueDate] = useState<string | null>(
+    initialValues?.dueDate ? initialValues.dueDate.slice(0, 10) : null
+  )
   const [topicIds, setTopicIds] = useState<string[]>(initialValues?.topicIds ?? [])
   const [isRecurring, setIsRecurring] = useState(initialValues?.isRecurring ?? false)
   const [frequency, setFrequency] = useState<RF>(initialValues?.frequency ?? 'weekly')
@@ -47,7 +50,9 @@ export function TaskForm({
       setTitleError('Title is required.')
       return
     }
-    onSubmit({ title: title.trim(), description, dueDate, topicIds, isRecurring, frequency })
+    // Convert YYYY-MM-DD to full ISO datetime for the API
+    const fullDueDate = dueDate ? `${dueDate}T00:00:00` : null
+    onSubmit({ title: title.trim(), description, dueDate: fullDueDate, topicIds, isRecurring, frequency })
   }
 
   function toggleTopic(id: string) {
@@ -83,12 +88,12 @@ export function TaskForm({
         />
       </div>
 
-      {/* Due Date */}
+      {/* Due Date — date only, no time picker */}
       <div className="space-y-1.5">
         <Label>Due Date</Label>
         <div className="flex items-center gap-2">
           <Input
-            type="datetime-local"
+            type="date"
             value={dueDate ?? ''}
             onChange={(e) => setDueDate(e.target.value || null)}
             className="flex-1"

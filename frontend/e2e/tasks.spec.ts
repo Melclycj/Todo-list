@@ -19,11 +19,11 @@ test.describe('Task CRUD', () => {
     await page.getByLabel('Title *').fill(title)
     await page.getByLabel('Description').fill('Some notes about this task')
 
-    // Fill in due date using the datetime-local input
+    // Fill in due date using the date-only input
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const isoLocal = tomorrow.toISOString().slice(0, 16) // "YYYY-MM-DDTHH:MM"
-    await page.locator('input[type="datetime-local"]').fill(isoLocal)
+    const dateStr = tomorrow.toISOString().slice(0, 10) // "YYYY-MM-DD"
+    await page.locator('input[type="date"]').fill(dateStr)
 
     await page.getByRole('button', { name: 'Create Task' }).click()
     await expect(page.getByText(title)).toBeVisible()
@@ -35,8 +35,8 @@ test.describe('Task CRUD', () => {
 
     await createTask(page, original)
 
-    // Click row to expand inline editor
-    await page.getByText(original).click()
+    // Click the table row to expand the inline editor
+    await page.locator('tbody tr', { hasText: original }).click()
     await page.getByLabel('Title *').clear()
     await page.getByLabel('Title *').fill(updated)
     await page.getByRole('button', { name: 'Save changes' }).click()
@@ -50,7 +50,7 @@ test.describe('Task CRUD', () => {
     await createTask(page, title)
 
     // Hover the row to reveal the actions menu
-    const row = page.locator(`text=${title}`).locator('..')
+    const row = page.locator('tbody tr', { hasText: title })
     await row.hover()
 
     await page.getByRole('button', { name: 'Task actions' }).click()

@@ -1,15 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import {
-  CheckSquare,
-  CalendarDays,
-  Calendar,
-  CalendarRange,
-  List,
-  Repeat,
-  Archive,
-  LogOut,
-} from 'lucide-react'
+import { CheckSquare, Repeat, Archive, LogOut } from 'lucide-react'
 import { ReminderBanner } from '@/features/reminder/ReminderBanner'
 import { SidebarTopicList } from '@/features/topics/SidebarTopicList'
 import { useLogout } from '@/hooks/useAuth'
@@ -63,7 +54,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted border-r border-border">
+    <div className="flex flex-col h-full w-full bg-muted border-r border-border">
       {/* App name */}
       <div className="px-4 py-3 flex items-center justify-between">
         <Link to="/" className="text-base font-bold text-foreground">
@@ -79,12 +70,6 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Scrollable nav area */}
       <nav className="flex-1 overflow-y-auto py-2 space-y-0.5 px-1" onClick={handleNavClick}>
         <NavItem to="/" icon={<CheckSquare size={14} />} label="Active Tasks" end />
-
-        <SectionLabel>Filters</SectionLabel>
-        <NavItem to="/?window=today" icon={<Calendar size={14} />} label="Today" />
-        <NavItem to="/?window=3days" icon={<CalendarDays size={14} />} label="Within 3 Days" />
-        <NavItem to="/?window=week" icon={<CalendarRange size={14} />} label="Within a Week" />
-        <NavItem to="/" icon={<List size={14} />} label="All Tasks" end />
 
         <SectionLabel>Topics</SectionLabel>
         <SidebarTopicList onNavigate={handleNavClick} />
