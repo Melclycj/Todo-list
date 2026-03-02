@@ -163,7 +163,7 @@ test.describe('Recurring Task Creation', () => {
     await expect(page.getByText(/recurring task created/i)).toBeVisible()
 
     // Template appears in table
-    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+    await expect(page.getByText(title, { exact: true })).toBeVisible()
   })
 
   test('recurring table shows recurring icon in status column', async ({ page }) => {
