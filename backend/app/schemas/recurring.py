@@ -11,6 +11,7 @@ class RecurringTemplateCreateRequest(BaseModel):
     title: str
     description: str | None = None
     frequency: RecurringFrequency
+    due_date: datetime | None = None
     topic_ids: list[uuid.UUID] = []
 
     @field_validator("title")
@@ -28,6 +29,7 @@ class RecurringTemplateUpdateRequest(BaseModel):
     title: str | None = None
     description: str | None = None
     frequency: RecurringFrequency | None = None
+    next_run_at: datetime | None = None
     topic_ids: list[uuid.UUID] | None = None
 
     @field_validator("title")
@@ -50,6 +52,7 @@ class RecurringTemplateResponse(BaseModel):
     frequency: RecurringFrequency
     is_active: bool
     next_run_at: datetime
+    due_date: datetime | None
     topics: list[TopicResponse]
     created_at: datetime
 

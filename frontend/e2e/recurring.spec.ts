@@ -26,7 +26,7 @@ test.describe('Recurring Task Creation', () => {
     await expect(page.getByText(/recurring task created/i)).toBeVisible()
   })
 
-  test('recurring template appears in the Recurring Tasks view', async ({ page }) => {
+  test('recurring template appears in the Recurring Tasks view as a table row', async ({ page }) => {
     const title = `Monthly Report ${uid()}`
 
     // Create via drawer
@@ -42,8 +42,12 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
     await page.waitForURL('**/recurring')
 
-    await expect(page.getByText(title)).toBeVisible()
-    await expect(page.getByText(/Monthly\s·/)).toBeVisible()
+    // Title appears in table row
+    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+    // Frequency column shows Monthly
+    await expect(page.getByRole('cell', { name: 'Monthly' })).toBeVisible()
+    // Next due column shows "Next due:"
+    await expect(page.getByText(/Next due:/)).toBeVisible()
   })
 
   test('creating a recurring template also creates an immediate instance', async ({ page }) => {
@@ -55,7 +59,6 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('button', { name: 'Create Task' }).click()
 
     // The first instance appears in the active task list
-    // (drawer closes back to home page — no goto needed; goto('/') would clear in-memory auth)
     await expect(page.getByText(new RegExp(title))).toBeVisible()
   })
 
@@ -71,7 +74,7 @@ test.describe('Recurring Task Creation', () => {
     // Navigate to Recurring Tasks
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
 
-    const row = page.locator('.group', { hasText: title }).first()
+    const row = page.getByRole('row', { name: new RegExp(title) })
     await row.hover()
 
     // Click the stop (square) button
@@ -80,8 +83,8 @@ test.describe('Recurring Task Creation', () => {
     // Confirm in the dialog
     await page.getByRole('dialog').getByRole('button', { name: 'Stop' }).click()
 
-    // Template now shows as Stopped (exact: true targets the Badge, not the frequency line "Weekly · Stopped")
-    await expect(page.getByText('Stopped', { exact: true })).toBeVisible()
+    // Next due cell now shows Stopped
+    await expect(page.getByRole('cell', { name: 'Stopped' })).toBeVisible()
   })
 
   test('create a recurring task with fortnightly frequency', async ({ page }) => {
@@ -94,7 +97,87 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('button', { name: 'Create Task' }).click()
 
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
-    await expect(page.getByText(title)).toBeVisible()
-    await expect(page.getByText(/Fortnightly\s·/)).toBeVisible()
+    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'Fortnightly' })).toBeVisible()
+  })
+
+  test('create a daily recurring task — due date is grayed out showing today', async ({ page }) => {
+    const title = `Daily Standup ${uid()}`
+
+    await page.getByRole('button', { name: 'New Task', exact: true }).click()
+    await page.getByLabel('Title *').fill(title)
+    await page.getByRole('checkbox', { name: /recurring/i }).check()
+
+    // Switch frequency to daily
+    await page.getByRole('combobox', { name: /frequency/i }).selectOption('daily')
+
+    // Due date input should be disabled (grayed out) showing today
+    const dueDateInput = page.locator('input[type="date"]')
+    await expect(dueDateInput).toBeDisabled()
+
+    // Today's date
+    const today = new Date().toISOString().slice(0, 10)
+    await expect(dueDateInput).toHaveValue(today)
+
+    await page.getByRole('button', { name: 'Create Task' }).click()
+    await expect(page.getByText(/recurring task created/i)).toBeVisible()
+  })
+
+  test('daily recurring task appears in table with Daily frequency', async ({ page }) => {
+    const title = `Daily Checkup ${uid()}`
+
+    await page.getByRole('button', { name: 'New Task', exact: true }).click()
+    await page.getByLabel('Title *').fill(title)
+    await page.getByRole('checkbox', { name: /recurring/i }).check()
+    await page.getByRole('combobox', { name: /frequency/i }).selectOption('daily')
+    await page.getByRole('button', { name: 'Create Task' }).click()
+
+    await page.getByRole('link', { name: 'Recurring Tasks' }).click()
+    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'Daily' })).toBeVisible()
+    await expect(page.getByText(/Next due:/)).toBeVisible()
+  })
+
+  test('create recurring task from Recurring Tasks page via New Template button', async ({ page }) => {
+    const title = `Template Created ${uid()}`
+
+    // Navigate to Recurring Tasks
+    await page.getByRole('link', { name: 'Recurring Tasks' }).click()
+    await page.waitForURL('**/recurring')
+
+    // Click the "New Template" button
+    await page.getByRole('button', { name: 'New Template' }).click()
+
+    // The TaskCreateDrawer should open with "New Recurring Task" title
+    await expect(page.getByText('New Recurring Task')).toBeVisible()
+
+    // Recurring checkbox should be checked and disabled
+    const recurringCheckbox = page.getByRole('checkbox', { name: /recurring/i })
+    await expect(recurringCheckbox).toBeChecked()
+    await expect(recurringCheckbox).toBeDisabled()
+
+    // Fill in title and create
+    await page.getByLabel('Title *').fill(title)
+    await page.getByRole('button', { name: 'Create Template' }).click()
+
+    await expect(page.getByText(/recurring task created/i)).toBeVisible()
+
+    // Template appears in table
+    await expect(page.getByRole('cell', { name: title })).toBeVisible()
+  })
+
+  test('recurring table shows recurring icon in status column', async ({ page }) => {
+    const title = `Icon Test ${uid()}`
+
+    await page.getByRole('button', { name: 'New Task', exact: true }).click()
+    await page.getByLabel('Title *').fill(title)
+    await page.getByRole('checkbox', { name: /recurring/i }).check()
+    await page.getByRole('button', { name: 'Create Task' }).click()
+
+    await page.getByRole('link', { name: 'Recurring Tasks' }).click()
+
+    const row = page.getByRole('row', { name: new RegExp(title) })
+    // The row contains the SVG recurring icon (aria-label="Recurring")
+    await expect(row.getByLabel('Recurring')).toBeVisible()
   })
 })

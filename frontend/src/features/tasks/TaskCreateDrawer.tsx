@@ -7,9 +7,11 @@ import { toast } from 'sonner'
 interface TaskCreateDrawerProps {
   open: boolean
   onClose: () => void
+  /** When true, recurring toggle is pre-checked and cannot be unchecked */
+  recurringOnly?: boolean
 }
 
-export function TaskCreateDrawer({ open, onClose }: TaskCreateDrawerProps) {
+export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskCreateDrawerProps) {
   const { mutate: createTask, isPending: isCreatingTask } = useCreateTask()
   const { mutate: createTemplate, isPending: isCreatingTemplate } = useCreateRecurringTemplate()
 
@@ -22,6 +24,7 @@ export function TaskCreateDrawer({ open, onClose }: TaskCreateDrawerProps) {
           title: values.title,
           description: values.description || null,
           frequency: values.frequency,
+          due_date: values.dueDate || null,
           topic_ids: values.topicIds,
         },
         {
@@ -65,7 +68,9 @@ export function TaskCreateDrawer({ open, onClose }: TaskCreateDrawerProps) {
       <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l border-border shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">New Task</h2>
+          <h2 className="font-semibold text-foreground">
+            {recurringOnly ? 'New Recurring Task' : 'New Task'}
+          </h2>
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-muted text-muted-foreground"
@@ -81,7 +86,8 @@ export function TaskCreateDrawer({ open, onClose }: TaskCreateDrawerProps) {
             onSubmit={handleSubmit}
             onCancel={onClose}
             isPending={isPending}
-            submitLabel="Create Task"
+            submitLabel={recurringOnly ? 'Create Template' : 'Create Task'}
+            recurringOnly={recurringOnly}
           />
         </div>
       </div>

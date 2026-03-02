@@ -51,6 +51,7 @@ async def create_recurring(
         title=body.title,
         frequency=body.frequency,
         description=body.description,
+        due_date=body.due_date,
         topic_ids=body.topic_ids,
         now=datetime.now(tz=timezone.utc),
     )

@@ -554,3 +554,279 @@ class TestRecurringServiceUpdateTemplate:
         )
         update_kwargs = mock_template_repo.update.call_args[1]
         assert update_kwargs["topic_ids"] == new_ids
+
+    @pytest.mark.asyncio
+    async def test_update_template_changes_next_run_at(self):
+        """Changing next_run_at shifts when the next instance is created."""
+        template = _make_template()
+        service, mock_template_repo = self._make_service()
+        mock_template_repo.get_by_id.return_value = template
+        mock_template_repo.update.return_value = template
+
+        new_next_run_at = datetime(2026, 4, 5, 0, 0, 0, tzinfo=timezone.utc)
+        await service.update_template(
+            template_id=template.id,
+            user_id=template.user_id,
+            next_run_at=new_next_run_at,
+        )
+        update_kwargs = mock_template_repo.update.call_args[1]
+        assert update_kwargs["next_run_at"] == new_next_run_at
+
+
+# ---------------------------------------------------------------------------
+# Daily frequency — advance_next_run_at
+# ---------------------------------------------------------------------------
+
+class TestAdvanceNextRunAtDaily:
+    """Tests for the daily frequency in advance_next_run_at."""
+
+    def test_daily_advances_by_1_day(self):
+        from_dt = datetime(2026, 3, 3, 9, 0, 0, tzinfo=timezone.utc)
+        result = advance_next_run_at(from_dt, RecurringFrequency.DAILY)
+        assert result == datetime(2026, 3, 4, 9, 0, 0, tzinfo=timezone.utc)
+
+    def test_daily_crosses_month_boundary(self):
+        from_dt = datetime(2026, 3, 31, 9, 0, 0, tzinfo=timezone.utc)
+        result = advance_next_run_at(from_dt, RecurringFrequency.DAILY)
+        assert result == datetime(2026, 4, 1, 9, 0, 0, tzinfo=timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# Daily frequency — create_template_with_first_instance
+# ---------------------------------------------------------------------------
+
+class TestRecurringServiceCreateTemplateDaily:
+    """Tests for daily recurring template creation."""
+
+    def _make_service(self) -> tuple[RecurringService, AsyncMock, AsyncMock]:
+        mock_template_repo = AsyncMock()
+        mock_task_repo = AsyncMock()
+        mock_topic_repo = AsyncMock()
+        mock_topic_repo.get_by_ids_for_user.return_value = []
+        service = RecurringService(
+            template_repo=mock_template_repo,
+            task_repo=mock_task_repo,
+            topic_repo=mock_topic_repo,
+        )
+        return service, mock_template_repo, mock_task_repo
+
+    @pytest.mark.asyncio
+    async def test_daily_first_task_due_today(self):
+        """Daily: first task's due_date equals the creation time (today)."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        now = datetime(2026, 3, 3, 9, 0, 0, tzinfo=timezone.utc)
+
+        template = _make_template(frequency=RecurringFrequency.DAILY)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = template.user_id
+        task.title = "Daily Standup – 2026-03-03"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=template.user_id,
+            title="Daily Standup",
+            frequency=RecurringFrequency.DAILY,
+            now=now,
+        )
+
+        task_kwargs = mock_task_repo.create.call_args[1]
+        # Daily tasks get due_date = now (today)
+        assert task_kwargs["due_date"] == now
+
+    @pytest.mark.asyncio
+    async def test_daily_template_has_no_due_date(self):
+        """Daily: template.due_date is None (tasks are always due on creation day)."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        now = datetime(2026, 3, 3, 9, 0, 0, tzinfo=timezone.utc)
+
+        template = _make_template(frequency=RecurringFrequency.DAILY)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = template.user_id
+        task.title = "Daily Standup – 2026-03-03"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=template.user_id,
+            title="Daily Standup",
+            frequency=RecurringFrequency.DAILY,
+            now=now,
+        )
+
+        template_kwargs = mock_template_repo.create.call_args[1]
+        assert template_kwargs["due_date"] is None
+
+    @pytest.mark.asyncio
+    async def test_daily_next_run_at_is_tomorrow(self):
+        """Daily: template's next_run_at is set to now + 1 day."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        now = datetime(2026, 3, 3, 9, 0, 0, tzinfo=timezone.utc)
+
+        template = _make_template(frequency=RecurringFrequency.DAILY)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = template.user_id
+        task.title = "Daily Standup – 2026-03-03"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=template.user_id,
+            title="Daily Standup",
+            frequency=RecurringFrequency.DAILY,
+            now=now,
+        )
+
+        template_kwargs = mock_template_repo.create.call_args[1]
+        expected_next = datetime(2026, 3, 4, 9, 0, 0, tzinfo=timezone.utc)
+        assert template_kwargs["next_run_at"] == expected_next
+
+    @pytest.mark.asyncio
+    async def test_non_daily_with_due_date_uses_provided_due_date(self):
+        """Weekly: first task gets the user-provided due_date."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        now = datetime(2026, 3, 3, 9, 0, 0, tzinfo=timezone.utc)
+        provided_due = datetime(2026, 3, 5, 0, 0, 0, tzinfo=timezone.utc)  # next Wednesday
+
+        template = _make_template(frequency=RecurringFrequency.WEEKLY)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = template.user_id
+        task.title = "Weekly Review – 2026-03-03"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=template.user_id,
+            title="Weekly Review",
+            frequency=RecurringFrequency.WEEKLY,
+            due_date=provided_due,
+            now=now,
+        )
+
+        task_kwargs = mock_task_repo.create.call_args[1]
+        assert task_kwargs["due_date"] == provided_due
+
+    @pytest.mark.asyncio
+    async def test_non_daily_with_due_date_sets_next_run_at(self):
+        """Weekly: template's next_run_at = due_date + 7 days."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        now = datetime(2026, 3, 3, 9, 0, 0, tzinfo=timezone.utc)
+        provided_due = datetime(2026, 3, 5, 0, 0, 0, tzinfo=timezone.utc)
+
+        template = _make_template(frequency=RecurringFrequency.WEEKLY)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = template.user_id
+        task.title = "Weekly Review – 2026-03-03"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=template.user_id,
+            title="Weekly Review",
+            frequency=RecurringFrequency.WEEKLY,
+            due_date=provided_due,
+            now=now,
+        )
+
+        template_kwargs = mock_template_repo.create.call_args[1]
+        expected_next = datetime(2026, 3, 12, 0, 0, 0, tzinfo=timezone.utc)
+        assert template_kwargs["next_run_at"] == expected_next
+
+
+# ---------------------------------------------------------------------------
+# create_due_instances — due_date propagation
+# ---------------------------------------------------------------------------
+
+class TestCreateDueInstancesDueDate:
+    """Tests for due_date propagation in create_due_instances."""
+
+    def _make_service(self) -> tuple[RecurringService, AsyncMock, AsyncMock]:
+        mock_template_repo = AsyncMock()
+        mock_task_repo = AsyncMock()
+        mock_topic_repo = AsyncMock()
+        service = RecurringService(
+            template_repo=mock_template_repo,
+            task_repo=mock_task_repo,
+            topic_repo=mock_topic_repo,
+        )
+        return service, mock_template_repo, mock_task_repo
+
+    @pytest.mark.asyncio
+    async def test_daily_instance_due_today(self):
+        """Scheduler-created daily tasks have due_date = now (today)."""
+        now = datetime(2026, 3, 4, 9, 0, 0, tzinfo=timezone.utc)
+        template = _make_template(
+            frequency=RecurringFrequency.DAILY,
+            next_run_at=now,
+            is_active=True,
+        )
+
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        mock_template_repo.get_due_templates.return_value = [template]
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.title = "Daily Standup – 2026-03-04"
+        task.user_id = template.user_id
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_due_instances(now=now)
+
+        task_kwargs = mock_task_repo.create.call_args[1]
+        assert task_kwargs["due_date"] == now
+
+    @pytest.mark.asyncio
+    async def test_non_daily_instance_due_at_next_run_at(self):
+        """Scheduler-created weekly tasks have due_date = template.next_run_at."""
+        scheduled = datetime(2026, 3, 12, 0, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 12, 9, 0, 0, tzinfo=timezone.utc)
+        template = _make_template(
+            frequency=RecurringFrequency.WEEKLY,
+            next_run_at=scheduled,
+            is_active=True,
+        )
+
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        mock_template_repo.get_due_templates.return_value = [template]
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.title = "Weekly Review – 2026-03-12"
+        task.user_id = template.user_id
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_due_instances(now=now)
+
+        task_kwargs = mock_task_repo.create.call_args[1]
+        assert task_kwargs["due_date"] == scheduled

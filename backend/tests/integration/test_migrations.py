@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 
+import sqlalchemy as sa
 import app.models  # noqa: F401 — register all models so drop_all is complete
 from app.config import settings
 from app.database import Base
@@ -38,6 +39,11 @@ def test_migrations_run_and_are_current() -> None:
         engine = create_async_engine(settings.test_database_url, poolclass=NullPool)
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
+            # Also reset Alembic's version tracking so all migrations run from
+            # scratch on the next upgrade. Without this, a stale alembic_version
+            # row (e.g. "002") would cause Alembic to skip earlier migrations that
+            # create enum types, then fail when a later migration tries to ALTER them.
+            await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version"))
         await engine.dispose()
 
     asyncio.run(_drop_all())

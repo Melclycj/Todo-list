@@ -32,6 +32,7 @@ class RecurringRepository:
         frequency,
         is_active: bool,
         next_run_at: datetime,
+        due_date: datetime | None = None,
         topic_ids: list[uuid.UUID] | None = None,
     ) -> RecurringTemplate:
         template = RecurringTemplate(
@@ -41,6 +42,7 @@ class RecurringRepository:
             frequency=frequency,
             is_active=is_active,
             next_run_at=next_run_at,
+            due_date=due_date,
         )
         self._session.add(template)
         await self._session.flush()

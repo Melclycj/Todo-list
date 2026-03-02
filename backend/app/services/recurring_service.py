@@ -22,10 +22,14 @@ def advance_next_run_at(
     """
     Return the next scheduled run time after from_dt for the given frequency.
 
+    - daily:       +1 day
     - weekly:      +7 days
     - fortnightly: +14 days
     - monthly:     +1 calendar month (clamped to last day of month if needed)
     """
+    if frequency == RecurringFrequency.DAILY:
+        return from_dt + timedelta(days=1)
+
     if frequency == RecurringFrequency.WEEKLY:
         return from_dt + timedelta(days=7)
 
@@ -72,13 +76,23 @@ class RecurringService:
         frequency: RecurringFrequency,
         description: str | None = None,
         topic_ids: list[uuid.UUID] | None = None,
+        due_date: datetime | None = None,
         now: datetime | None = None,
     ) -> tuple[RecurringTemplate, Task]:
         """
         Create a recurring template and immediately spawn the first instance.
 
         The first instance's title is formatted as "<title> – YYYY-MM-DD".
-        next_run_at for the template is set to `now + frequency`.
+
+        For daily frequency:
+          - The first task's due_date is today (now).
+          - Template's due_date is None (tasks are always due on the day created).
+          - next_run_at = now + 1 day.
+
+        For weekly/fortnightly/monthly:
+          - The user-provided due_date (or now if not given) is used as the
+            first task's due_date and the basis for next_run_at.
+          - next_run_at = due_date + frequency.
         """
         if now is None:
             now = datetime.now(tz=timezone.utc)
@@ -89,8 +103,17 @@ class RecurringService:
 
         topic_ids = topic_ids or []
 
-        # Calculate next_run_at (first instance is created now, next at +frequency)
-        next_run_at = advance_next_run_at(now, frequency)
+        if frequency == RecurringFrequency.DAILY:
+            # Daily tasks are always due on the day they're created
+            first_task_due = now
+            template_due_date = None
+            next_run_at = advance_next_run_at(now, frequency)
+        else:
+            # Use user-provided due_date or fall back to now
+            effective_due = due_date or now
+            first_task_due = effective_due
+            template_due_date = effective_due
+            next_run_at = advance_next_run_at(effective_due, frequency)
 
         # Create the template
         template = await self._template_repo.create(
@@ -100,6 +123,7 @@ class RecurringService:
             frequency=frequency,
             is_active=True,
             next_run_at=next_run_at,
+            due_date=template_due_date,
             topic_ids=topic_ids,
         )
 
@@ -109,7 +133,7 @@ class RecurringService:
             user_id=user_id,
             title=instance_title,
             description=description,
-            due_date=None,
+            due_date=first_task_due,
             status=TaskStatus.TODO,
             archived=False,
             topic_ids=topic_ids,
@@ -131,8 +155,12 @@ class RecurringService:
     ) -> int:
         """
         For each active recurring template where next_run_at <= now:
-          1. Create a new task instance.
+          1. Create a new task instance with the appropriate due_date.
           2. Advance next_run_at by the frequency.
+
+        Due date logic:
+          - daily:  due_date = now (the day the task is created)
+          - others: due_date = template.next_run_at (the scheduled date)
 
         Returns:
             Number of instances created.
@@ -144,6 +172,12 @@ class RecurringService:
         count = 0
 
         for template in due_templates:
+            # Determine due_date for the new task instance
+            if template.frequency == RecurringFrequency.DAILY:
+                task_due_date = now
+            else:
+                task_due_date = template.next_run_at
+
             # Build the instance
             instance_title = build_instance_title(template.title, now)
             topic_ids = [t.id for t in (template.topics or [])]
@@ -152,7 +186,7 @@ class RecurringService:
                 user_id=template.user_id,
                 title=instance_title,
                 description=template.description,
-                due_date=None,
+                due_date=task_due_date,
                 status=TaskStatus.TODO,
                 archived=False,
                 topic_ids=topic_ids,
@@ -207,11 +241,13 @@ class RecurringService:
         title: str | None = None,
         description: str | None = None,
         frequency: RecurringFrequency | None = None,
+        next_run_at: datetime | None = None,
         topic_ids: list[uuid.UUID] | None = None,
     ) -> RecurringTemplate:
         """
         Update a recurring template's fields.
         Frequency changes apply from the next instance onward.
+        Changing next_run_at shifts when the next task instance will be created.
         """
         template = await self._template_repo.get_by_id(template_id)
         if template is None:
@@ -229,6 +265,8 @@ class RecurringService:
             update_fields["description"] = description
         if frequency is not None:
             update_fields["frequency"] = frequency
+        if next_run_at is not None:
+            update_fields["next_run_at"] = next_run_at
         if topic_ids is not None:
             update_fields["topic_ids"] = topic_ids
 

@@ -22,6 +22,8 @@ interface TaskFormProps {
   onCancel: () => void
   isPending?: boolean
   submitLabel?: string
+  /** When true, recurring toggle is pre-checked and cannot be unchecked */
+  recurringOnly?: boolean
 }
 
 export function TaskForm({
@@ -30,6 +32,7 @@ export function TaskForm({
   onCancel,
   isPending,
   submitLabel = 'Save',
+  recurringOnly = false,
 }: TaskFormProps) {
   const { data: topics = [] } = useTopics()
 
@@ -40,9 +43,12 @@ export function TaskForm({
     initialValues?.dueDate ? initialValues.dueDate.slice(0, 10) : null
   )
   const [topicIds, setTopicIds] = useState<string[]>(initialValues?.topicIds ?? [])
-  const [isRecurring, setIsRecurring] = useState(initialValues?.isRecurring ?? false)
+  const [isRecurring, setIsRecurring] = useState(recurringOnly || (initialValues?.isRecurring ?? false))
   const [frequency, setFrequency] = useState<RF>(initialValues?.frequency ?? 'weekly')
   const [titleError, setTitleError] = useState('')
+
+  const isDailyFrequency = isRecurring && frequency === 'daily'
+  const todayStr = new Date().toISOString().slice(0, 10)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,8 +56,11 @@ export function TaskForm({
       setTitleError('Title is required.')
       return
     }
-    // Convert YYYY-MM-DD to full ISO datetime for the API
-    const fullDueDate = dueDate ? `${dueDate}T00:00:00` : null
+    // Daily tasks have no due date (they're always due on the day created)
+    let fullDueDate: string | null = null
+    if (!isDailyFrequency && dueDate) {
+      fullDueDate = `${dueDate}T00:00:00`
+    }
     onSubmit({ title: title.trim(), description, dueDate: fullDueDate, topicIds, isRecurring, frequency })
   }
 
@@ -88,28 +97,37 @@ export function TaskForm({
         />
       </div>
 
-      {/* Due Date — date only, no time picker */}
+      {/* Due Date — hidden for daily, date-only otherwise */}
       <div className="space-y-1.5">
         <Label>Due Date</Label>
-        <div className="flex items-center gap-2">
+        {isDailyFrequency ? (
           <Input
             type="date"
-            value={dueDate ?? ''}
-            onChange={(e) => setDueDate(e.target.value || null)}
-            className="flex-1"
+            value={todayStr}
+            disabled
+            className="flex-1 opacity-50 cursor-not-allowed"
           />
-          {dueDate && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setDueDate(null)}
-              className="text-muted-foreground"
-            >
-              Clear
-            </Button>
-          )}
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              value={dueDate ?? ''}
+              onChange={(e) => setDueDate(e.target.value || null)}
+              className="flex-1"
+            />
+            {dueDate && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDueDate(null)}
+                className="text-muted-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Topics */}
@@ -138,11 +156,12 @@ export function TaskForm({
 
       {/* Recurring toggle */}
       <div className="space-y-2">
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className={cn('flex items-center gap-2', recurringOnly ? 'cursor-not-allowed' : 'cursor-pointer')}>
           <input
             type="checkbox"
             checked={isRecurring}
-            onChange={(e) => setIsRecurring(e.target.checked)}
+            onChange={(e) => !recurringOnly && setIsRecurring(e.target.checked)}
+            disabled={recurringOnly}
             className="rounded"
           />
           <span className="text-sm">Make this a recurring task</span>
@@ -156,6 +175,7 @@ export function TaskForm({
               onChange={(e) => setFrequency(e.target.value as RF)}
               className="mt-1 block w-full text-sm rounded-md border border-input bg-background px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
             >
+              <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="fortnightly">Fortnightly</option>
               <option value="monthly">Monthly</option>

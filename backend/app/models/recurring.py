@@ -20,6 +20,7 @@ from app.database import Base
 
 
 class RecurringFrequency(str, enum.Enum):
+    DAILY = "daily"
     WEEKLY = "weekly"
     FORTNIGHTLY = "fortnightly"
     MONTHLY = "monthly"
@@ -63,6 +64,7 @@ class RecurringTemplate(Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
