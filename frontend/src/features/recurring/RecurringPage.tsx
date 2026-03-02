@@ -159,14 +159,18 @@ export function RecurringPage() {
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Recurring Tasks</h1>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus size={14} /> New Template
-        </Button>
+    <div className="flex flex-col h-full">
+      {/* Page header — matches TaskListPage topbar */}
+      <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-border">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Recurring Tasks</h1>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus size={14} /> New Template
+          </Button>
+        </div>
       </div>
 
+      <div className="flex-1 overflow-auto p-4">
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-md" />)}
@@ -178,6 +182,8 @@ export function RecurringPage() {
           {templates.map((t) => <TemplateRow key={t.id} template={t} />)}
         </div>
       )}
+
+      </div>
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -207,6 +213,6 @@ export function RecurringPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }

@@ -47,16 +47,16 @@ export function TaskListPage() {
     <div className="flex flex-col h-full">
       {/* Page header */}
       <div className="flex items-center justify-between px-6 py-4 gap-4 flex-shrink-0 border-b border-border">
-        <div className="flex items-center gap-2">
-          <TaskFilterDropdown value={filterWindow} onChange={handleFilterChange} />
-          <TaskSearchBar value={searchQuery} onChange={setSearchQuery} />
-        </div>
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-foreground hidden sm:block">{pageTitle}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
           <Button size="sm" onClick={() => setDrawerOpen(true)}>
             <Plus size={14} />
             New Task
           </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <TaskFilterDropdown value={filterWindow} onChange={handleFilterChange} />
+          <TaskSearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
       </div>
 

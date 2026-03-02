@@ -55,29 +55,24 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <div className="flex flex-col h-full w-full bg-muted border-r border-border">
-      {/* App name */}
-      <div className="px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="text-base font-bold text-foreground">
+      {/* App name + reminder */}
+      <div className="px-4 pt-3 pb-2">
+        <Link to="/" className="text-xl font-bold text-foreground">
           Todo
         </Link>
+        <ReminderBanner />
       </div>
 
       <Separator />
 
-      {/* Reminder banner */}
-      <ReminderBanner />
-
       {/* Scrollable nav area */}
       <nav className="flex-1 overflow-y-auto py-2 space-y-0.5 px-1" onClick={handleNavClick}>
         <NavItem to="/" icon={<CheckSquare size={14} />} label="Active Tasks" end />
+        <NavItem to="/recurring" icon={<Repeat size={14} />} label="Recurring Tasks" />
+        <NavItem to="/archive" icon={<Archive size={14} />} label="Archive" />
 
         <SectionLabel>Topics</SectionLabel>
         <SidebarTopicList onNavigate={handleNavClick} />
-
-        <div className="mt-2">
-          <NavItem to="/recurring" icon={<Repeat size={14} />} label="Recurring Tasks" />
-          <NavItem to="/archive" icon={<Archive size={14} />} label="Archive" />
-        </div>
       </nav>
 
       <Separator />

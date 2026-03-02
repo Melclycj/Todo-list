@@ -58,57 +58,60 @@ export function ArchivePage() {
   const totalPages = meta ? Math.ceil(meta.total / meta.limit) : 1
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col h-full">
+      {/* Page header — matches TaskListPage topbar */}
+      <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-border">
         <h1 className="text-2xl font-bold">Archive</h1>
         {meta && (
           <span className="text-sm text-muted-foreground">{meta.total} tasks</span>
         )}
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-md" />
-          ))}
-        </div>
-      ) : tasks.length === 0 ? (
-        <TaskEmptyState isArchive />
-      ) : (
-        <>
-          <div className="border border-border rounded-lg overflow-hidden">
-            {tasks.map((task) => (
-              <ArchiveRow key={task.id} task={task} />
+      <div className="flex-1 overflow-auto p-4">
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-md" />
             ))}
           </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                <ChevronLeft size={14} />
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-                <ChevronRight size={14} />
-              </Button>
+        ) : tasks.length === 0 ? (
+          <TaskEmptyState isArchive />
+        ) : (
+          <>
+            <div className="border border-border rounded-lg overflow-hidden">
+              {tasks.map((task) => (
+                <ArchiveRow key={task.id} task={task} />
+              ))}
             </div>
-          )}
-        </>
-      )}
-    </>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft size={14} />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   )
 }
