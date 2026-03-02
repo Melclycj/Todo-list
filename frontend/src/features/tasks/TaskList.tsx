@@ -5,6 +5,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useColumnResize } from '@/hooks/useColumnResize'
 import type { Task, TaskFilterWindow } from '@/types/task'
 
+// Fixed width for the actions column (not resizable)
+const ACTIONS_COLUMN_WIDTH = 40
+
 interface TaskListProps {
   tasks: Task[]
   isLoading?: boolean
@@ -25,6 +28,9 @@ export function TaskList({
   onCreateTask,
 }: TaskListProps) {
   const { widths, startColumnDrag } = useColumnResize()
+
+  const totalWidth =
+    Object.values(widths).reduce((sum, w) => sum + w, 0) + ACTIONS_COLUMN_WIDTH
 
   if (isLoading) {
     return (
@@ -49,7 +55,10 @@ export function TaskList({
 
   return (
     <div className="border border-border rounded-lg overflow-auto h-full">
-      <table className="w-full border-collapse" style={{ minWidth: 780 }}>
+      <table
+        className="border-collapse"
+        style={{ tableLayout: 'fixed', width: totalWidth, minWidth: totalWidth }}
+      >
         <TaskTableHeader widths={widths} onStartDrag={startColumnDrag} />
         <tbody>
           {tasks.map((task) => (

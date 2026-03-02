@@ -35,14 +35,16 @@ test.describe('Task CRUD', () => {
 
     await createTask(page, original)
 
-    // Click the table row to expand the inline editor
-    await page.locator('tbody tr', { hasText: original }).click()
-    await page.getByLabel('Title *').clear()
-    await page.getByLabel('Title *').fill(updated)
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // Click the title cell to start inline editing
+    await page.locator('tbody tr', { hasText: original }).getByText(original).click()
+
+    // Type the new value and confirm with Enter
+    const input = page.locator('tbody tr input[type="text"]')
+    await input.fill(updated)
+    await input.press('Enter')
 
     await expect(page.getByText(updated)).toBeVisible()
-    await expect(page.getByText(original)).not.toBeVisible()
+    await expect(page.getByText(original, { exact: true })).not.toBeVisible()
   })
 
   test('delete a task', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import {
   DropdownMenu,
@@ -20,10 +20,9 @@ import { toast } from 'sonner'
 interface TaskActionsMenuProps {
   taskId: string
   taskTitle: string
-  onEdit: () => void
 }
 
-export function TaskActionsMenu({ taskId, taskTitle, onEdit }: TaskActionsMenuProps) {
+export function TaskActionsMenu({ taskId, taskTitle }: TaskActionsMenuProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const { mutate: deleteTask, isPending } = useDeleteTask()
 
@@ -50,12 +49,6 @@ export function TaskActionsMenu({ taskId, taskTitle, onEdit }: TaskActionsMenuPr
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-36">
-          <DropdownMenuItem
-            onClick={(e) => { e.stopPropagation(); onEdit() }}
-          >
-            <Pencil size={13} className="mr-2" />
-            Edit
-          </DropdownMenuItem>
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={(e) => { e.stopPropagation(); setConfirmOpen(true) }}

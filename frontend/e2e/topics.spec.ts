@@ -27,14 +27,15 @@ test.describe('Topic Filtering', () => {
     await page.getByPlaceholder('Topic name…').press('Enter')
     await expect(page.getByText(topicName)).toBeVisible()
 
-    // Create two tasks
+    // Create untagged task
     await createTask(page, otherTask)
-    await createTask(page, taskTitle)
 
-    // Edit tagged task to assign the topic
-    await page.getByText(taskTitle).click()
-    await page.getByRole('button', { name: topicName }).click() // topic pill in form
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // Create tagged task — assign topic in the New Task drawer
+    await page.getByRole('button', { name: 'New Task', exact: true }).click()
+    await page.getByLabel('Title *').fill(taskTitle)
+    await page.getByRole('button', { name: topicName }).click() // topic pill in drawer
+    await page.getByRole('button', { name: 'Create Task' }).click()
+    await expect(page.getByText(taskTitle)).toBeVisible()
 
     // Navigate to the topic filter via sidebar
     await page.locator('a', { hasText: topicName }).click()
@@ -76,12 +77,12 @@ test.describe('Topic Filtering', () => {
     await page.getByRole('button', { name: 'Add topic' }).click()
     await page.getByPlaceholder('Topic name…').fill(topicName)
     await page.getByPlaceholder('Topic name…').press('Enter')
-    await createTask(page, taskTitle)
-
-    // Assign topic to task
-    await page.getByText(taskTitle).click()
-    await page.getByRole('button', { name: topicName }).click()
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // Create task with topic assigned in the New Task drawer
+    await page.getByRole('button', { name: 'New Task', exact: true }).click()
+    await page.getByLabel('Title *').fill(taskTitle)
+    await page.getByRole('button', { name: topicName }).click() // topic pill in drawer
+    await page.getByRole('button', { name: 'Create Task' }).click()
+    await expect(page.getByText(taskTitle)).toBeVisible()
 
     // Delete the topic
     const topicItem = page.locator('a', { hasText: topicName })
