@@ -51,14 +51,15 @@ test.describe('Task CRUD', () => {
     const title = `Delete Me ${uid()}`
     await createTask(page, title)
 
-    // Hover the row to reveal the actions menu
+    // Enter edit mode via the pencil icon
+    await page.getByRole('button', { name: 'Edit tasks' }).click()
+
+    // Select the task row via its checkbox
     const row = page.locator('tbody tr', { hasText: title })
-    await row.hover()
+    await row.locator('input[type="checkbox"]').check()
 
-    await page.getByRole('button', { name: 'Task actions' }).click()
-    await page.getByRole('menuitem', { name: 'Delete' }).click()
-
-    // Confirm deletion
+    // Click the delete button (now enabled) and confirm
+    await page.getByRole('button', { name: 'Delete selected' }).click()
     await page.getByRole('button', { name: /^Delete$/ }).click()
 
     await expect(page.getByText(title, { exact: true })).not.toBeVisible()
