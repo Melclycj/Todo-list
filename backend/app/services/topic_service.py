@@ -7,6 +7,9 @@ from app.exceptions import AppError
 from app.models.topic import Topic
 
 
+MAX_TOPICS_PER_USER = 10
+
+
 class TopicService:
     """Handles topic creation, renaming, deletion, and listing."""
 
@@ -19,6 +22,12 @@ class TopicService:
             raise AppError("Topic name must not be empty")
         if len(name) > 100:
             raise AppError("Topic name must not exceed 100 characters")
+
+        count = await self._topic_repo.count_for_user(user_id=user_id)
+        if count >= MAX_TOPICS_PER_USER:
+            raise AppError(
+                "Maximum of 10 topics reached. Delete an existing topic to create a new one."
+            )
 
         existing = await self._topic_repo.get_by_name(user_id=user_id, name=name)
         if existing is not None:

@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 
-const STORAGE_KEY = 'taskTableColumnWidths_v2'
+const STORAGE_KEY = 'taskTableColumnWidths_v3'
 
-export type ColumnKey = 'status' | 'title' | 'dueDate' | 'description'
+export type ColumnKey = 'status' | 'title' | 'dueDate' | 'topics' | 'description'
 
 // Proportions of the full viewport width used as the one-time computed default.
 // Adjust these values to rebalance columns. They do not need to sum to 1.
 const COLUMN_PROPORTIONS: Record<ColumnKey, number> = {
-  status: 0.15,
+  status: 0.10,
   title: 0.15,
-  dueDate: 0.15,
-  description: 0.40,
+  dueDate: 0.12,
+  topics: 0.15,
+  description: 0.33,
 }
 
 function computeDefaultWidths(): Record<ColumnKey, number> {
@@ -20,6 +21,7 @@ function computeDefaultWidths(): Record<ColumnKey, number> {
     status: Math.round(vw * COLUMN_PROPORTIONS.status),
     title: Math.round(vw * COLUMN_PROPORTIONS.title),
     dueDate: Math.round(vw * COLUMN_PROPORTIONS.dueDate),
+    topics: Math.round(vw * COLUMN_PROPORTIONS.topics),
     description: Math.round(vw * COLUMN_PROPORTIONS.description),
   }
 }

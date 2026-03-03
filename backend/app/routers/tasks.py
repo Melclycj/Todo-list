@@ -11,6 +11,7 @@ from app.database import get_db
 from app.repositories.task_repository import TaskRepository
 from app.schemas.common import ApiResponse, PaginationMeta
 from app.schemas.task import (
+    TaskBulkDeleteRequest,
     TaskCreateRequest,
     TaskFilterParams,
     TaskOrderUpdateRequest,
@@ -69,6 +70,16 @@ async def create_task(
         topic_ids=body.topic_ids,
     )
     return ApiResponse.ok(TaskResponse.model_validate(task))
+
+
+@router.post("/bulk-delete", response_model=ApiResponse[None])
+async def bulk_delete_tasks(
+    body: TaskBulkDeleteRequest,
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    service: TaskService = Depends(_get_task_service),
+):
+    await service.bulk_delete_tasks(user_id=user_id, task_ids=body.task_ids)
+    return ApiResponse.ok(None)
 
 
 @router.get("/{task_id}", response_model=ApiResponse[TaskResponse])

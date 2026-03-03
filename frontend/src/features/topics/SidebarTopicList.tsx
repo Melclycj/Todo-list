@@ -18,6 +18,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 
+const MAX_TOPICS = 10
+
 interface SidebarTopicListProps {
   onNavigate?: () => void
 }
@@ -124,7 +126,11 @@ export function SidebarTopicList({ onNavigate }: SidebarTopicListProps) {
       ))}
 
       {/* Inline create form */}
-      {isCreating ? (
+      {topics.length >= MAX_TOPICS ? (
+        <p className="px-3 py-1.5 text-xs text-muted-foreground">
+          Maximum of {MAX_TOPICS} topics reached
+        </p>
+      ) : isCreating ? (
         <form onSubmit={handleCreateSubmit} className="px-2 py-0.5">
           <input
             ref={newInputRef}

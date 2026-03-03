@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import type { Task, TaskStatus } from '@/types/task'
 import type { ColumnKey } from '@/hooks/useColumnResize'
 import { TaskStatusBadge } from './TaskStatusBadge'
-import { TaskActionsMenu } from './TaskActionsMenu'
+import { TaskTopicSelector } from './TaskTopicSelector'
 import { useUpdateTaskStatus, useUpdateTask } from '@/hooks/useTasks'
 import { toast } from 'sonner'
 
@@ -88,9 +88,12 @@ function EditableCell({
 interface TaskRowProps {
   task: Task
   columnWidths: Record<ColumnKey, number>
+  isEditMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function TaskRow({ task, columnWidths }: TaskRowProps) {
+export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect }: TaskRowProps) {
   const { mutate: updateStatus } = useUpdateTaskStatus()
   const { mutate: updateTask } = useUpdateTask(task.id)
   const isDone = task.status === 'done'
@@ -116,6 +119,18 @@ export function TaskRow({ task, columnWidths }: TaskRowProps) {
 
   return (
     <tr className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isDone && 'opacity-60')}>
+      {/* Checkbox (edit mode only) */}
+      {isEditMode && (
+        <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect?.(task.id)}
+            className="accent-primary h-4 w-4 cursor-pointer"
+          />
+        </td>
+      )}
+
       {/* Status */}
       <td style={{ width: columnWidths.status }} className="px-3 py-2">
         <TaskStatusBadge status={task.status} onClick={handleStatusClick} />
@@ -143,6 +158,11 @@ export function TaskRow({ task, columnWidths }: TaskRowProps) {
         />
       </td>
 
+      {/* Topics */}
+      <td style={{ width: columnWidths.topics }} className="px-3 py-2">
+        <TaskTopicSelector taskId={task.id} selectedTopics={task.topics} />
+      </td>
+
       {/* Description */}
       <td style={{ width: columnWidths.description }} className="px-3 py-2">
         <EditableCell
@@ -151,11 +171,6 @@ export function TaskRow({ task, columnWidths }: TaskRowProps) {
           placeholder="No description"
           onSave={(val) => saveField({ description: val || null })}
         />
-      </td>
-
-      {/* Actions */}
-      <td className="px-2 py-2 w-10" onClick={(e) => e.stopPropagation()}>
-        <TaskActionsMenu taskId={task.id} taskTitle={task.title} />
       </td>
     </tr>
   )

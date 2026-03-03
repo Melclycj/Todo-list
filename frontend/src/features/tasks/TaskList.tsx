@@ -5,8 +5,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useColumnResize } from '@/hooks/useColumnResize'
 import type { Task, TaskFilterWindow } from '@/types/task'
 
-// Fixed width for the actions column (not resizable)
-const ACTIONS_COLUMN_WIDTH = 40
+// Fixed width for the checkbox column shown in edit mode
+const CHECKBOX_COLUMN_WIDTH = 40
 
 interface TaskListProps {
   tasks: Task[]
@@ -16,6 +16,9 @@ interface TaskListProps {
   isSearch?: boolean
   searchQuery?: string
   onCreateTask?: () => void
+  isEditMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (id: string) => void
 }
 
 export function TaskList({
@@ -26,11 +29,15 @@ export function TaskList({
   isSearch,
   searchQuery,
   onCreateTask,
+  isEditMode,
+  selectedIds,
+  onToggleSelect,
 }: TaskListProps) {
   const { widths, startColumnDrag } = useColumnResize()
 
   const totalWidth =
-    Object.values(widths).reduce((sum, w) => sum + w, 0) + ACTIONS_COLUMN_WIDTH
+    Object.values(widths).reduce((sum, w) => sum + w, 0) +
+    (isEditMode ? CHECKBOX_COLUMN_WIDTH : 0)
 
   if (isLoading) {
     return (
@@ -59,10 +66,17 @@ export function TaskList({
         className="border-collapse"
         style={{ tableLayout: 'fixed', width: totalWidth, minWidth: totalWidth }}
       >
-        <TaskTableHeader widths={widths} onStartDrag={startColumnDrag} />
+        <TaskTableHeader widths={widths} onStartDrag={startColumnDrag} isEditMode={isEditMode} />
         <tbody>
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} columnWidths={widths} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              columnWidths={widths}
+              isEditMode={isEditMode}
+              isSelected={selectedIds?.has(task.id)}
+              onToggleSelect={onToggleSelect}
+            />
           ))}
         </tbody>
       </table>

@@ -5,7 +5,7 @@ No business logic here.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, delete as sa_delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -200,6 +200,16 @@ class TaskRepository:
             .where(Task.archived.is_(False))
         )
         return list(result.scalars().all())
+
+    async def bulk_delete_for_user(
+        self, task_ids: list[uuid.UUID], user_id: uuid.UUID
+    ) -> int:
+        """Delete tasks by ID, restricted to the given user. Returns count deleted."""
+        result = await self._session.execute(
+            sa_delete(Task).where(Task.id.in_(task_ids), Task.user_id == user_id)
+        )
+        await self._session.commit()
+        return result.rowcount
 
     async def bulk_archive(self, task_ids: list[uuid.UUID]) -> None:
         """Mark all given task IDs as archived."""

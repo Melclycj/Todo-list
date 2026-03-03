@@ -3,7 +3,7 @@ Topic repository — queries for user-defined topics.
 """
 import uuid
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.topic import Topic
@@ -34,6 +34,12 @@ class TopicRepository:
             )
         )
         return list(result.scalars().all())
+
+    async def count_for_user(self, user_id: uuid.UUID) -> int:
+        result = await self._session.execute(
+            select(func.count(Topic.id)).where(Topic.user_id == user_id)
+        )
+        return result.scalar_one()
 
     async def list_for_user(self, user_id: uuid.UUID) -> list[Topic]:
         result = await self._session.execute(

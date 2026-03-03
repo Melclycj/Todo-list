@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.task import TaskStatus
 from app.schemas.topic import TopicResponse
@@ -69,6 +69,10 @@ class TaskResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TaskBulkDeleteRequest(BaseModel):
+    task_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=50)
 
 
 class TaskFilterParams(BaseModel):

@@ -4,19 +4,22 @@ import type { ColumnKey } from '@/hooks/useColumnResize'
 interface TaskTableHeaderProps {
   widths: Record<ColumnKey, number>
   onStartDrag: (column: ColumnKey, e: MouseEvent) => void
+  isEditMode?: boolean
 }
 
 const COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: 'status', label: 'Status' },
   { key: 'title', label: 'Title' },
   { key: 'dueDate', label: 'Due Date' },
+  { key: 'topics', label: 'Topics' },
   { key: 'description', label: 'Description' },
 ]
 
-export function TaskTableHeader({ widths, onStartDrag }: TaskTableHeaderProps) {
+export function TaskTableHeader({ widths, onStartDrag, isEditMode }: TaskTableHeaderProps) {
   return (
     <thead className="sticky top-0 z-10 bg-muted">
       <tr>
+        {isEditMode && <th className="w-10 border-b border-border" />}
         {COLUMNS.map((col) => (
           <th
             key={col.key}
@@ -30,8 +33,6 @@ export function TaskTableHeader({ widths, onStartDrag }: TaskTableHeaderProps) {
             />
           </th>
         ))}
-        {/* Narrow fixed column for row actions */}
-        <th className="w-10 border-b border-border" />
       </tr>
     </thead>
   )

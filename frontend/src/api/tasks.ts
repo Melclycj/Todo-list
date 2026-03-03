@@ -49,3 +49,8 @@ export async function updateTaskOrder(
   const { data } = await client.patch<ApiResponse<Task>>(`/tasks/${id}/order`, payload)
   return data
 }
+
+export async function bulkDeleteTasks(taskIds: string[]): Promise<ApiResponse<null>> {
+  const { data } = await client.post<ApiResponse<null>>('/tasks/bulk-delete', { task_ids: taskIds })
+  return data
+}

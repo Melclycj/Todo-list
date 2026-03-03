@@ -249,6 +249,16 @@ class TaskService:
             raise PermissionError("Not authorized")
         await self._task_repo.delete(task_id)
 
+    async def bulk_delete_tasks(
+        self, user_id: uuid.UUID, task_ids: list[uuid.UUID]
+    ) -> int:
+        """Delete multiple tasks at once, enforcing ownership. Returns count deleted."""
+        if not task_ids:
+            raise AppError("No task IDs provided")
+        if len(task_ids) > 50:
+            raise AppError("Cannot delete more than 50 tasks at once")
+        return await self._task_repo.bulk_delete_for_user(task_ids, user_id)
+
     # ------------------------------------------------------------------
     # Archive (scheduler job)
     # ------------------------------------------------------------------
