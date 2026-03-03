@@ -29,8 +29,12 @@ def _make_topic(name: str = "Work", user_id: uuid.UUID | None = None) -> MagicMo
     return topic
 
 
-def _make_service(existing_topic: MagicMock | None = None) -> tuple[TopicService, AsyncMock]:
+def _make_service(
+    existing_topic: MagicMock | None = None,
+    topic_count: int = 0,
+) -> tuple[TopicService, AsyncMock]:
     mock_repo = AsyncMock()
+    mock_repo.count_for_user.return_value = topic_count
     mock_repo.get_by_name.return_value = existing_topic
     mock_repo.get_by_id.return_value = existing_topic
     mock_repo.create.return_value = existing_topic or _make_topic()
@@ -83,6 +87,13 @@ class TestTopicServiceCreate:
         service, _ = _make_service(existing_topic=None)
         with pytest.raises(ValueError, match="must not exceed 100"):
             await service.create_topic(user_id=uuid.uuid4(), name="x" * 101)
+
+    @pytest.mark.asyncio
+    async def test_create_topic_at_limit_raises(self):
+        """Creating a topic when user already has 10 raises AppError."""
+        service, _ = _make_service(existing_topic=None, topic_count=10)
+        with pytest.raises(Exception, match="Maximum of 10 topics"):
+            await service.create_topic(user_id=uuid.uuid4(), name="New Topic")
 
     @pytest.mark.asyncio
     async def test_create_topic_strips_whitespace(self):
