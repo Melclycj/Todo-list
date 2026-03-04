@@ -1,0 +1,26 @@
+[run]
+source = app
+omit =
+    # App bootstrap and infrastructure — require env vars or a live DB to import/run
+    app/database.py
+    app/config.py
+    app/main.py
+
+    # Infrastructure modules — require HTTP runtime, SSE connections, or APScheduler
+    app/middleware/*
+    app/sse/*
+    app/scheduler/*
+
+    # Routers not yet covered by integration tests — add tests before removing these
+    app/routers/archive.py
+    app/routers/recurring.py
+    app/routers/reminder.py
+
+    # Repositories not yet covered by integration tests
+    app/repositories/recurring_repository.py
+
+    # Schemas not yet covered by integration tests
+    app/schemas/recurring.py
+
+[report]
+show_missing = true

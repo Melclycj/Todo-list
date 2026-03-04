@@ -1,0 +1,38 @@
+import { defineConfig, devices } from '@playwright/test'
+
+/**
+ * E2E tests run against the full Docker Compose stack.
+ *
+ * Start the stack first:
+ *   docker compose up -d --build
+ *
+ * Then run tests:
+ *   npx playwright test
+ */
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: false, // sequential — tests share a single DB instance
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
+  workers: 1,
+  reporter: [['html', { open: 'never' }], ['list']],
+
+  expect: {
+    // CI containers are slower; give assertions more time before failing
+    timeout: process.env.CI ? 15_000 : 5_000,
+  },
+
+  use: {
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8080',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'off',
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+})

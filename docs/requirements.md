@@ -240,7 +240,7 @@ To Do → In Progress → Done
 
 ---
 
-### NFR-04: Security
+### NFR-04: Security 
 **Description:** User data is protected in transit and at rest.
 
 **Success Criteria:**

@@ -1,0 +1,136 @@
+import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { TaskList } from './TaskList'
+import { TaskSearchBar } from './TaskSearchBar'
+import { TaskCreateDrawer } from './TaskCreateDrawer'
+import { TaskFilterDropdown } from './TaskFilterDropdown'
+import { TaskEditToolbar } from './TaskEditToolbar'
+import { BulkDeleteDialog } from './BulkDeleteDialog'
+import { useTasks, useBulkDeleteTasks } from '@/hooks/useTasks'
+import { useDebounce } from '@/hooks/useDebounce'
+import type { TaskFilterWindow } from '@/types/task'
+import { toast } from 'sonner'
+
+const FILTER_LABELS: Record<TaskFilterWindow, string> = {
+  all: 'All Tasks',
+  today: 'Today',
+  '3days': 'Within 3 Days',
+  week: 'Within a Week',
+}
+
+const STORAGE_KEY = 'taskFilterWindow'
+
+function readSavedFilter(): TaskFilterWindow {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  if (saved && saved in FILTER_LABELS) return saved as TaskFilterWindow
+  return 'all'
+}
+
+export function TaskListPage() {
+  const [filterWindow, setFilterWindow] = useState<TaskFilterWindow>(readSavedFilter)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const debouncedQuery = useDebounce(searchQuery, 300)
+  const { mutate: bulkDelete, isPending: isDeleting } = useBulkDeleteTasks()
+
+  const { data: tasks = [], isLoading } = useTasks({
+    window: filterWindow,
+    q: debouncedQuery || undefined,
+  })
+
+  // Clear selection when filter or search changes
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [filterWindow, debouncedQuery])
+
+  function handleFilterChange(value: TaskFilterWindow) {
+    setFilterWindow(value)
+    localStorage.setItem(STORAGE_KEY, value)
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function exitEditMode() {
+    setIsEditMode(false)
+    setSelectedIds(new Set())
+  }
+
+  function handleBulkDelete() {
+    const count = selectedIds.size
+    bulkDelete(Array.from(selectedIds), {
+      onSuccess: () => {
+        toast.success(`${count} task${count !== 1 ? 's' : ''} deleted`)
+        setConfirmOpen(false)
+        exitEditMode()
+      },
+      onError: () => toast.error('Failed to delete tasks'),
+    })
+  }
+
+  const pageTitle = FILTER_LABELS[filterWindow]
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="flex items-center justify-between px-6 py-4 gap-4 flex-shrink-0 border-b border-border">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
+          <Button size="sm" onClick={() => setDrawerOpen(true)}>
+            <Plus size={14} />
+            New Task
+          </Button>
+          <TaskEditToolbar
+            isEditMode={isEditMode}
+            selectedCount={selectedIds.size}
+            onEnterEditMode={() => setIsEditMode(true)}
+            onExitEditMode={exitEditMode}
+            onDelete={() => setConfirmOpen(true)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <TaskFilterDropdown value={filterWindow} onChange={handleFilterChange} />
+          <TaskSearchBar value={searchQuery} onChange={setSearchQuery} />
+        </div>
+      </div>
+
+      {/* Task table — fills remaining space */}
+      <div className="flex-1 overflow-hidden p-4">
+        <TaskList
+          tasks={tasks}
+          isLoading={isLoading}
+          filterWindow={filterWindow}
+          isSearch={!!debouncedQuery}
+          searchQuery={debouncedQuery}
+          onCreateTask={() => setDrawerOpen(true)}
+          isEditMode={isEditMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+        />
+      </div>
+
+      {/* Create task drawer */}
+      <TaskCreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      {/* Bulk delete confirmation */}
+      <BulkDeleteDialog
+        open={confirmOpen}
+        count={selectedIds.size}
+        isPending={isDeleting}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </div>
+  )
+}
