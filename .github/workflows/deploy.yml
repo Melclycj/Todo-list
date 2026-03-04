@@ -31,7 +31,8 @@ jobs:
           script: |
             cd /opt/todo-app
             git pull origin main
-            docker compose up -d --build
+            DOCKER_BUILDKIT=1 docker compose build --memory 1g
+            docker compose up -d
             docker compose exec -T api alembic upgrade head
 
       # Wait for Docker to finish starting, then hit the health endpoint.
