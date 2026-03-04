@@ -30,10 +30,10 @@ jobs:
           # Change /opt/todo-app to wherever the repo is cloned on your VPS.
           script: |
             cd /opt/todo-app
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             DOCKER_BUILDKIT=1 docker compose build --memory 1g
             docker compose up -d
-            docker compose exec -T api alembic upgrade head
 
       # Wait for Docker to finish starting, then hit the health endpoint.
       # curl --fail exits non-zero on any 4xx/5xx — this fails the workflow
