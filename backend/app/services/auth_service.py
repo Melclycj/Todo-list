@@ -14,9 +14,8 @@ from app.models.user import User
 class AuthService:
     """Handles user registration, login, and token lifecycle."""
 
-    def __init__(self, user_repo, token_repo, password_hasher) -> None:
-        self._user_repo = user_repo
-        self._token_repo = token_repo
+    def __init__(self, uow, password_hasher) -> None:
+        self._uow = uow
         self._hasher = password_hasher
 
     async def register(self, email: str, password: str) -> User:
@@ -26,12 +25,14 @@ class AuthService:
         Raises:
             AppError: If the email is already in use.
         """
-        existing = await self._user_repo.get_by_email(email)
+        existing = await self._uow.users.get_by_email(email)
         if existing is not None:
             raise AppError("Email already in use")
 
         hashed = self._hasher.hash(password)
-        return await self._user_repo.create(email=email, hashed_password=hashed)
+        user = await self._uow.users.create(email=email, hashed_password=hashed)
+        await self._uow.commit()
+        return user
 
     async def login(
         self, email: str, password: str
@@ -42,7 +43,7 @@ class AuthService:
         Raises:
             AppError: On invalid credentials (generic message for security).
         """
-        user = await self._user_repo.get_by_email(email)
+        user = await self._uow.users.get_by_email(email)
         if user is None or not self._hasher.verify(password, user.hashed_password):
             raise AppError("Invalid credentials")
 
@@ -52,11 +53,12 @@ class AuthService:
         expires_at = datetime.now(tz=timezone.utc) + timedelta(
             days=settings.refresh_token_expire_days
         )
-        await self._token_repo.create(
+        await self._uow.tokens.create(
             user_id=user.id,
             token_hash=token_hash,
             expires_at=expires_at,
         )
+        await self._uow.commit()
         return access_token, raw_refresh
 
     async def refresh(self, raw_refresh_token: str) -> str:
@@ -67,7 +69,7 @@ class AuthService:
             AppError: If the refresh token is invalid, expired, or revoked.
         """
         token_hash = _hash_token(raw_refresh_token)
-        record = await self._token_repo.get_by_hash(token_hash)
+        record = await self._uow.tokens.get_by_hash(token_hash)
         if record is None or record.revoked:
             raise AppError("Invalid refresh token")
         if record.expires_at < datetime.now(tz=timezone.utc):
@@ -80,9 +82,10 @@ class AuthService:
         Revoke the given refresh token.
         """
         token_hash = _hash_token(raw_refresh_token)
-        record = await self._token_repo.get_by_hash(token_hash)
+        record = await self._uow.tokens.get_by_hash(token_hash)
         if record is not None:
-            await self._token_repo.revoke(record.id)
+            await self._uow.tokens.revoke(record.id)
+            await self._uow.commit()
 
 
 def _hash_token(raw: str) -> str:

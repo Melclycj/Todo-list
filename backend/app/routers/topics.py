@@ -4,20 +4,19 @@ Topics router — /api/v1/topics/*
 import uuid
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_id
-from app.database import get_db
-from app.repositories.topic_repository import TopicRepository
+from app.database import get_uow
 from app.schemas.common import ApiResponse
 from app.schemas.topic import TopicCreateRequest, TopicRenameRequest, TopicResponse
 from app.services.topic_service import TopicService
+from app.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
 
-def _get_topic_service(session: AsyncSession = Depends(get_db)) -> TopicService:
-    return TopicService(topic_repo=TopicRepository(session))
+def _get_topic_service(uow: UnitOfWork = Depends(get_uow)) -> TopicService:
+    return TopicService(uow=uow)
 
 
 @router.get("", response_model=ApiResponse[list[TopicResponse]])

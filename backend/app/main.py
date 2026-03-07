@@ -30,17 +30,20 @@ from app.routers import auth, tasks, topics, archive, recurring, reminder
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start scheduler on startup, shut it down on shutdown."""
-    from app.sse.connection_manager import sse_manager
+    from app.database import async_session_factory
     from app.scheduler.jobs import create_scheduler
-    from app.services.task_service import TaskService
-    from app.services.recurring_service import RecurringService
+    from app.sse.connection_manager import sse_manager
 
-    # NOTE: The scheduler uses app-level service instances wired at startup.
-    # For production, inject real repositories here.
-    # For now, the scheduler is created but services are wired per-request via DI.
-    # A production implementation would create a long-lived DB session for the scheduler.
+    scheduler = create_scheduler(
+        session_factory=async_session_factory,
+        sse_manager=sse_manager,
+        timezone_str=settings.scheduler_timezone,
+    )
+    scheduler.start()
 
     yield  # App runs here
+
+    scheduler.shutdown()
 
 
 app = FastAPI(

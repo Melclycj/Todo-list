@@ -53,7 +53,6 @@ class RecurringRepository:
             )
             template.topics = list(topics_result.scalars().all())
 
-        await self._session.commit()
         return await self.get_by_id(template.id)
 
     async def update(self, template_id: uuid.UUID, **fields) -> RecurringTemplate | None:
@@ -74,7 +73,6 @@ class RecurringRepository:
                 )
                 template.topics = list(topics_result.scalars().all())
 
-        await self._session.commit()
         return await self.get_by_id(template_id)
 
     async def list_for_user(self, user_id: uuid.UUID) -> list[RecurringTemplate]:
@@ -87,12 +85,13 @@ class RecurringRepository:
         return list(result.scalars().all())
 
     async def get_due_templates(self, now: datetime) -> list[RecurringTemplate]:
-        """Return active templates whose next_run_at <= now."""
+        """Return active templates whose next_run_at <= now, locking rows to prevent duplicate spawning."""
         result = await self._session.execute(
             select(RecurringTemplate)
             .where(RecurringTemplate.is_active.is_(True))
             .where(RecurringTemplate.next_run_at <= now)
             .options(selectinload(RecurringTemplate.topics))
+            .with_for_update(skip_locked=True)
         )
         return list(result.scalars().all())
 
@@ -101,5 +100,5 @@ class RecurringRepository:
     ) -> RecurringInstance:
         instance = RecurringInstance(template_id=template_id, task_id=task_id)
         self._session.add(instance)
-        await self._session.commit()
+        await self._session.flush()
         return instance

@@ -60,10 +60,8 @@ class RecurringService:
     Orchestrates recurring template operations and scheduled instance creation.
     """
 
-    def __init__(self, template_repo, task_repo, topic_repo=None) -> None:
-        self._template_repo = template_repo
-        self._task_repo = task_repo
-        self._topic_repo = topic_repo
+    def __init__(self, uow) -> None:
+        self._uow = uow
 
     # ------------------------------------------------------------------
     # Create template + first instance
@@ -115,8 +113,8 @@ class RecurringService:
             template_due_date = effective_due
             next_run_at = advance_next_run_at(effective_due, frequency)
 
-        # Create the template
-        template = await self._template_repo.create(
+        # Create the template (flush only — no commit yet)
+        template = await self._uow.templates.create(
             user_id=user_id,
             title=title,
             description=description,
@@ -127,9 +125,9 @@ class RecurringService:
             topic_ids=topic_ids,
         )
 
-        # Create the first instance immediately
+        # Create the first instance immediately (flush only)
         instance_title = build_instance_title(title, now)
-        first_task = await self._task_repo.create(
+        first_task = await self._uow.tasks.create(
             user_id=user_id,
             title=instance_title,
             description=description,
@@ -139,10 +137,13 @@ class RecurringService:
             topic_ids=topic_ids,
         )
 
-        # Record the recurring_instance link
-        await self._template_repo.link_instance(
+        # Record the recurring_instance link (flush only)
+        await self._uow.templates.link_instance(
             template_id=template.id, task_id=first_task.id
         )
+
+        # ONE atomic commit — template + first task + link all persist together
+        await self._uow.commit()
 
         return template, first_task
 
@@ -168,7 +169,7 @@ class RecurringService:
         if now is None:
             now = datetime.now(tz=timezone.utc)
 
-        due_templates = await self._template_repo.get_due_templates(now=now)
+        due_templates = await self._uow.templates.get_due_templates(now=now)
         count = 0
 
         for template in due_templates:
@@ -182,7 +183,7 @@ class RecurringService:
             instance_title = build_instance_title(template.title, now)
             topic_ids = [t.id for t in (template.topics or [])]
 
-            task = await self._task_repo.create(
+            task = await self._uow.tasks.create(
                 user_id=template.user_id,
                 title=instance_title,
                 description=template.description,
@@ -192,18 +193,20 @@ class RecurringService:
                 topic_ids=topic_ids,
             )
 
-            # Link as recurring instance
-            await self._template_repo.link_instance(
+            # Link as recurring instance (flush only)
+            await self._uow.templates.link_instance(
                 template_id=template.id, task_id=task.id
             )
 
-            # Advance next_run_at
+            # Advance next_run_at (flush only)
             new_next_run_at = advance_next_run_at(template.next_run_at, template.frequency)
-            await self._template_repo.update(
+            await self._uow.templates.update(
                 template_id=template.id,
                 next_run_at=new_next_run_at,
             )
 
+            # Commit per template — each spawn is independently atomic
+            await self._uow.commit()
             count += 1
 
         return count
@@ -220,15 +223,17 @@ class RecurringService:
 
         Existing instances are unaffected.
         """
-        template = await self._template_repo.get_by_id(template_id)
+        template = await self._uow.templates.get_by_id(template_id)
         if template is None:
             raise LookupError("Recurring template not found")
         if template.user_id != user_id:
             raise PermissionError("Not authorized")
 
-        return await self._template_repo.update(
+        result = await self._uow.templates.update(
             template_id=template_id, is_active=False
         )
+        await self._uow.commit()
+        return result
 
     # ------------------------------------------------------------------
     # Update template
@@ -249,7 +254,7 @@ class RecurringService:
         Frequency changes apply from the next instance onward.
         Changing next_run_at shifts when the next task instance will be created.
         """
-        template = await self._template_repo.get_by_id(template_id)
+        template = await self._uow.templates.get_by_id(template_id)
         if template is None:
             raise LookupError("Recurring template not found")
         if template.user_id != user_id:
@@ -270,6 +275,16 @@ class RecurringService:
         if topic_ids is not None:
             update_fields["topic_ids"] = topic_ids
 
-        return await self._template_repo.update(
+        result = await self._uow.templates.update(
             template_id=template_id, **update_fields
         )
+        await self._uow.commit()
+        return result
+
+    # ------------------------------------------------------------------
+    # List templates
+    # ------------------------------------------------------------------
+
+    async def list_templates(self, user_id: uuid.UUID) -> list[RecurringTemplate]:
+        """List all recurring templates for the given user."""
+        return await self._uow.templates.list_for_user(user_id=user_id)

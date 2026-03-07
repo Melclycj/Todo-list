@@ -28,7 +28,7 @@ Business rules (FR-07) — evaluated top-to-bottom, first match applies:
 "today's tasks" = tasks due within the current 4am–4am window.
 """
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -408,7 +408,14 @@ class TestGetCurrentDayBoundary:
 
 
 class TestReminderServiceGetMessage:
-    """Tests for ReminderService.get_reminder_message (async with mocked repo)."""
+    """Tests for ReminderService.get_reminder_message (async with mocked UnitOfWork)."""
+
+    def _make_service(self, mock_task_repo: AsyncMock):
+        from app.services.reminder_service import ReminderService
+        mock_uow = AsyncMock()
+        mock_uow.tasks = mock_task_repo
+        mock_uow.commit = AsyncMock()
+        return ReminderService(uow=mock_uow)
 
     @pytest.mark.asyncio
     async def test_get_reminder_message_uses_repo_counts(self):
@@ -417,9 +424,7 @@ class TestReminderServiceGetMessage:
         mock_task_repo.count_tasks_in_window.return_value = 4
         mock_task_repo.count_done_tasks_in_window.return_value = 4
 
-        from app.services.reminder_service import ReminderService
-
-        service = ReminderService(task_repo=mock_task_repo)
+        service = self._make_service(mock_task_repo)
         now = datetime(2026, 2, 24, 10, 0, 0, tzinfo=timezone.utc)
         message = await service.get_reminder_message(user_id="user1", now=now)
 
@@ -434,9 +439,7 @@ class TestReminderServiceGetMessage:
         mock_task_repo.count_tasks_in_window.return_value = 0
         mock_task_repo.count_done_tasks_in_window.return_value = 0
 
-        from app.services.reminder_service import ReminderService
-
-        service = ReminderService(task_repo=mock_task_repo)
+        service = self._make_service(mock_task_repo)
         # Should not raise — returns a valid message string
         message = await service.get_reminder_message(user_id="user1")
         assert isinstance(message, str)
@@ -449,9 +452,7 @@ class TestReminderServiceGetMessage:
         mock_task_repo.count_tasks_in_window.return_value = 0
         mock_task_repo.count_done_tasks_in_window.return_value = 0
 
-        from app.services.reminder_service import ReminderService
-
-        service = ReminderService(task_repo=mock_task_repo)
+        service = self._make_service(mock_task_repo)
         now = datetime(2026, 2, 24, 12, 0, 0, tzinfo=timezone.utc)
         await service.get_reminder_message(user_id="user1", now=now)
 

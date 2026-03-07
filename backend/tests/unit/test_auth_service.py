@@ -63,11 +63,13 @@ def _make_service(
     hasher.hash.return_value = "hashed"
     hasher.verify.return_value = password_valid
 
-    return AuthService(
-        user_repo=user_repo,
-        token_repo=token_repo,
-        password_hasher=hasher,
-    )
+    mock_uow = AsyncMock()
+    mock_uow.users = user_repo
+    mock_uow.tokens = token_repo
+    mock_uow.commit = AsyncMock()
+    mock_uow.rollback = AsyncMock()
+
+    return AuthService(uow=mock_uow, password_hasher=hasher)
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +151,7 @@ class TestAuthServiceLogin:
             )
 
         # The token_repo.create should have been called with a hash, not the raw token
-        call_kwargs = service._token_repo.create.call_args[1]
+        call_kwargs = service._uow.tokens.create.call_args[1]
         assert call_kwargs["token_hash"] == _hash_token(raw_refresh)
         assert call_kwargs["token_hash"] != raw_refresh
 
@@ -218,7 +220,7 @@ class TestAuthServiceLogout:
         service = _make_service(token_record=token_record)
 
         await service.logout(raw_refresh_token="sometoken")
-        service._token_repo.revoke.assert_called_once_with(token_record.id)
+        service._uow.tokens.revoke.assert_called_once_with(token_record.id)
 
     @pytest.mark.asyncio
     async def test_logout_unknown_token_does_not_raise(self):
@@ -226,4 +228,4 @@ class TestAuthServiceLogout:
         service = _make_service(token_record=None)
         # Should NOT raise
         await service.logout(raw_refresh_token="nonexistent")
-        service._token_repo.revoke.assert_not_called()
+        service._uow.tokens.revoke.assert_not_called()

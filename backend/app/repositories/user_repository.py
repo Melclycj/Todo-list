@@ -29,8 +29,7 @@ class UserRepository:
     async def create(self, email: str, hashed_password: str) -> User:
         user = User(email=email, hashed_password=hashed_password)
         self._session.add(user)
-        await self._session.commit()
-        await self._session.refresh(user)
+        await self._session.flush()
         return user
 
 
@@ -51,8 +50,7 @@ class RefreshTokenRepository:
             revoked=False,
         )
         self._session.add(token)
-        await self._session.commit()
-        await self._session.refresh(token)
+        await self._session.flush()
         return token
 
     async def get_by_hash(self, token_hash: str) -> RefreshToken | None:
@@ -69,4 +67,3 @@ class RefreshTokenRepository:
             .where(RefreshToken.id == token_id)
             .values(revoked=True)
         )
-        await self._session.commit()

@@ -4,11 +4,9 @@ Tasks router — /api/v1/tasks/*
 import uuid
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_id
-from app.database import get_db
-from app.repositories.task_repository import TaskRepository
+from app.database import get_uow
 from app.schemas.common import ApiResponse, PaginationMeta
 from app.schemas.task import (
     TaskBulkDeleteRequest,
@@ -21,15 +19,13 @@ from app.schemas.task import (
 )
 from app.services.task_service import TaskService
 from app.sse.connection_manager import sse_manager
+from app.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-def _get_task_service(session: AsyncSession = Depends(get_db)) -> TaskService:
-    return TaskService(
-        task_repo=TaskRepository(session),
-        sse_manager=sse_manager,
-    )
+def _get_task_service(uow: UnitOfWork = Depends(get_uow)) -> TaskService:
+    return TaskService(uow=uow, sse_manager=sse_manager)
 
 
 @router.get("", response_model=ApiResponse[list[TaskResponse]])

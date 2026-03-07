@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from fastapi import Depends
 
 from app.config import settings
 
@@ -33,3 +34,8 @@ async def get_db() -> AsyncSession:
             raise
         finally:
             await session.close()
+
+
+async def get_uow(session: AsyncSession = Depends(get_db)) -> "UnitOfWork":
+    from app.unit_of_work import UnitOfWork
+    return UnitOfWork(session)

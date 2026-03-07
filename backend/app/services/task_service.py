@@ -86,10 +86,9 @@ class TaskService:
     Dependencies are injected for testability.
     """
 
-    def __init__(self, task_repo, sse_manager=None, topic_repo=None) -> None:
-        self._task_repo = task_repo
+    def __init__(self, uow, sse_manager=None) -> None:
+        self._uow = uow
         self._sse_manager = sse_manager
-        self._topic_repo = topic_repo
 
     # ------------------------------------------------------------------
     # Create
@@ -110,7 +109,7 @@ class TaskService:
         if len(title) > 255:
             raise AppError("Title must not exceed 255 characters")
 
-        task = await self._task_repo.create(
+        task = await self._uow.tasks.create(
             user_id=user_id,
             title=title,
             description=description,
@@ -119,6 +118,7 @@ class TaskService:
             archived=False,
             topic_ids=topic_ids or [],
         )
+        await self._uow.commit()
         return task
 
     # ------------------------------------------------------------------
@@ -127,7 +127,7 @@ class TaskService:
 
     async def get_task(self, task_id: uuid.UUID, user_id: uuid.UUID) -> Task:
         """Fetch a single task, enforcing ownership."""
-        task = await self._task_repo.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
         if task is None:
             raise LookupError("Task not found")
         if task.user_id != user_id:
@@ -148,7 +148,7 @@ class TaskService:
         if now is None:
             now = datetime.now(tz=timezone.utc)
 
-        tasks, total = await self._task_repo.list_active(
+        tasks, total = await self._uow.tasks.list_active(
             user_id=user_id,
             window=window,
             topic_id=topic_id,
@@ -170,12 +170,14 @@ class TaskService:
         **fields,
     ) -> Task:
         """Update arbitrary fields on a task, enforcing ownership."""
-        task = await self._task_repo.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
         if task is None:
             raise LookupError("Task not found")
         if task.user_id != user_id:
             raise PermissionError("Not authorized")
-        return await self._task_repo.update(task_id, **fields)
+        result = await self._uow.tasks.update(task_id, **fields)
+        await self._uow.commit()
+        return result
 
     async def update_task_status(
         self,
@@ -193,7 +195,7 @@ class TaskService:
         - Sets result_note if provided with a Done transition.
         - Notifies SSE manager so reminder banner updates immediately.
         """
-        task = await self._task_repo.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
         if task is None:
             raise LookupError("Task not found")
         if task.user_id != user_id:
@@ -212,7 +214,8 @@ class TaskService:
             update_fields["done_at"] = None
             update_fields["result_note"] = None
 
-        updated_task = await self._task_repo.update(task_id, **update_fields)
+        updated_task = await self._uow.tasks.update(task_id, **update_fields)
+        await self._uow.commit()
 
         # Notify SSE so reminder banner updates within 1 second (FR-07)
         if self._sse_manager is not None:
@@ -227,12 +230,14 @@ class TaskService:
         manual_order: int,
     ) -> Task:
         """Update the manual sort order within a same-day group."""
-        task = await self._task_repo.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
         if task is None:
             raise LookupError("Task not found")
         if task.user_id != user_id:
             raise PermissionError("Not authorized")
-        return await self._task_repo.update(task_id, manual_order=manual_order)
+        result = await self._uow.tasks.update(task_id, manual_order=manual_order)
+        await self._uow.commit()
+        return result
 
     # ------------------------------------------------------------------
     # Delete
@@ -242,12 +247,13 @@ class TaskService:
         self, task_id: uuid.UUID, user_id: uuid.UUID
     ) -> None:
         """Delete a task, enforcing ownership."""
-        task = await self._task_repo.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
         if task is None:
             raise LookupError("Task not found")
         if task.user_id != user_id:
             raise PermissionError("Not authorized")
-        await self._task_repo.delete(task_id)
+        await self._uow.tasks.delete(task_id)
+        await self._uow.commit()
 
     async def bulk_delete_tasks(
         self, user_id: uuid.UUID, task_ids: list[uuid.UUID]
@@ -257,7 +263,9 @@ class TaskService:
             raise AppError("No task IDs provided")
         if len(task_ids) > 50:
             raise AppError("Cannot delete more than 50 tasks at once")
-        return await self._task_repo.bulk_delete_for_user(task_ids, user_id)
+        count = await self._uow.tasks.bulk_delete_for_user(task_ids, user_id)
+        await self._uow.commit()
+        return count
 
     # ------------------------------------------------------------------
     # Archive (scheduler job)
@@ -272,14 +280,15 @@ class TaskService:
         Returns:
             Number of tasks archived.
         """
-        unarchived_done = await self._task_repo.get_unarchived_done_tasks()
+        unarchived_done = await self._uow.tasks.get_unarchived_done_tasks()
         to_archive = [
             task.id
             for task in unarchived_done
             if is_task_archivable(task, today_4am)
         ]
         if to_archive:
-            await self._task_repo.bulk_archive(to_archive)
+            await self._uow.tasks.bulk_archive(to_archive)
+            await self._uow.commit()
         return len(to_archive)
 
     # ------------------------------------------------------------------
@@ -290,14 +299,14 @@ class TaskService:
         self, task_id: uuid.UUID, user_id: uuid.UUID
     ) -> Task:
         """Restore an archived task back to active (To Do status)."""
-        task = await self._task_repo.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
         if task is None:
             raise LookupError("Task not found")
         if task.user_id != user_id:
             raise PermissionError("Not authorized")
         if not task.archived:
             raise AppError("Task is not archived")
-        return await self._task_repo.update(
+        result = await self._uow.tasks.update(
             task_id,
             archived=False,
             archived_at=None,
@@ -305,3 +314,5 @@ class TaskService:
             done_at=None,
             result_note=None,
         )
+        await self._uow.commit()
+        return result

@@ -5,12 +5,9 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_id
-from app.database import get_db
-from app.repositories.recurring_repository import RecurringRepository
-from app.repositories.task_repository import TaskRepository
+from app.database import get_uow
 from app.schemas.common import ApiResponse
 from app.schemas.recurring import (
     RecurringTemplateCreateRequest,
@@ -18,15 +15,13 @@ from app.schemas.recurring import (
     RecurringTemplateUpdateRequest,
 )
 from app.services.recurring_service import RecurringService
+from app.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/recurring", tags=["recurring"])
 
 
-def _get_recurring_service(session: AsyncSession = Depends(get_db)) -> RecurringService:
-    return RecurringService(
-        template_repo=RecurringRepository(session),
-        task_repo=TaskRepository(session),
-    )
+def _get_recurring_service(uow: UnitOfWork = Depends(get_uow)) -> RecurringService:
+    return RecurringService(uow=uow)
 
 
 @router.get("", response_model=ApiResponse[list[RecurringTemplateResponse]])
@@ -34,7 +29,7 @@ async def list_recurring(
     user_id: uuid.UUID = Depends(get_current_user_id),
     service: RecurringService = Depends(_get_recurring_service),
 ):
-    templates = await service._template_repo.list_for_user(user_id=user_id)
+    templates = await service.list_templates(user_id=user_id)
     return ApiResponse.ok(
         [RecurringTemplateResponse.model_validate(t) for t in templates]
     )

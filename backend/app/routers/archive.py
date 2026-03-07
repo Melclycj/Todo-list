@@ -4,26 +4,25 @@ Archive router — /api/v1/archive/*
 import uuid
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_id
-from app.database import get_db
-from app.repositories.task_repository import TaskRepository
+from app.database import get_uow
 from app.schemas.common import ApiResponse, PaginationMeta
 from app.schemas.task import TaskResponse
 from app.services.archive_service import ArchiveService
 from app.services.task_service import TaskService
 from app.sse.connection_manager import sse_manager
+from app.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/archive", tags=["archive"])
 
 
-def _get_archive_service(session: AsyncSession = Depends(get_db)) -> ArchiveService:
-    return ArchiveService(task_repo=TaskRepository(session))
+def _get_archive_service(uow: UnitOfWork = Depends(get_uow)) -> ArchiveService:
+    return ArchiveService(uow=uow)
 
 
-def _get_task_service(session: AsyncSession = Depends(get_db)) -> TaskService:
-    return TaskService(task_repo=TaskRepository(session), sse_manager=sse_manager)
+def _get_task_service(uow: UnitOfWork = Depends(get_uow)) -> TaskService:
+    return TaskService(uow=uow, sse_manager=sse_manager)
 
 
 @router.get("", response_model=ApiResponse[list[TaskResponse]])

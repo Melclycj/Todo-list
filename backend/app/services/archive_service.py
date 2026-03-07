@@ -12,8 +12,8 @@ from app.models.task import Task
 class ArchiveService:
     """Handles archive view and restore operations."""
 
-    def __init__(self, task_repo) -> None:
-        self._task_repo = task_repo
+    def __init__(self, uow) -> None:
+        self._uow = uow
 
     async def list_archived(
         self,
@@ -22,6 +22,6 @@ class ArchiveService:
         limit: int = 20,
     ) -> tuple[list[Task], int]:
         """Return a paginated list of archived tasks for the given user."""
-        return await self._task_repo.list_archived(
+        return await self._uow.tasks.list_archived(
             user_id=user_id, page=page, limit=limit
         )

@@ -13,8 +13,8 @@ MAX_TOPICS_PER_USER = 10
 class TopicService:
     """Handles topic creation, renaming, deletion, and listing."""
 
-    def __init__(self, topic_repo) -> None:
-        self._topic_repo = topic_repo
+    def __init__(self, uow) -> None:
+        self._uow = uow
 
     async def create_topic(self, user_id: uuid.UUID, name: str) -> Topic:
         name = name.strip()
@@ -23,20 +23,22 @@ class TopicService:
         if len(name) > 100:
             raise AppError("Topic name must not exceed 100 characters")
 
-        count = await self._topic_repo.count_for_user(user_id=user_id)
+        count = await self._uow.topics.count_for_user(user_id=user_id)
         if count >= MAX_TOPICS_PER_USER:
             raise AppError(
                 "Maximum of 10 topics reached. Delete an existing topic to create a new one."
             )
 
-        existing = await self._topic_repo.get_by_name(user_id=user_id, name=name)
+        existing = await self._uow.topics.get_by_name(user_id=user_id, name=name)
         if existing is not None:
             raise AppError(f"Topic '{name}' already exists")
 
-        return await self._topic_repo.create(user_id=user_id, name=name)
+        topic = await self._uow.topics.create(user_id=user_id, name=name)
+        await self._uow.commit()
+        return topic
 
     async def list_topics(self, user_id: uuid.UUID) -> list[Topic]:
-        return await self._topic_repo.list_for_user(user_id=user_id)
+        return await self._uow.topics.list_for_user(user_id=user_id)
 
     async def rename_topic(
         self, topic_id: uuid.UUID, user_id: uuid.UUID, new_name: str
@@ -47,23 +49,26 @@ class TopicService:
         if len(new_name) > 100:
             raise AppError("Topic name must not exceed 100 characters")
 
-        topic = await self._topic_repo.get_by_id(topic_id)
+        topic = await self._uow.topics.get_by_id(topic_id)
         if topic is None:
             raise LookupError("Topic not found")
         if topic.user_id != user_id:
             raise PermissionError("Not authorized")
 
-        existing = await self._topic_repo.get_by_name(user_id=user_id, name=new_name)
+        existing = await self._uow.topics.get_by_name(user_id=user_id, name=new_name)
         if existing is not None and existing.id != topic_id:
             raise AppError(f"Topic '{new_name}' already exists")
 
-        return await self._topic_repo.update(topic_id, name=new_name)
+        result = await self._uow.topics.update(topic_id, name=new_name)
+        await self._uow.commit()
+        return result
 
     async def delete_topic(self, topic_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        topic = await self._topic_repo.get_by_id(topic_id)
+        topic = await self._uow.topics.get_by_id(topic_id)
         if topic is None:
             raise LookupError("Topic not found")
         if topic.user_id != user_id:
             raise PermissionError("Not authorized")
         # Deletion removes the tag from all associated tasks (FK cascade via join table)
-        await self._topic_repo.delete(topic_id)
+        await self._uow.topics.delete(topic_id)
+        await self._uow.commit()

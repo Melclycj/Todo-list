@@ -62,7 +62,6 @@ class TaskRepository:
                     [{"task_id": task.id, "topic_id": tid} for tid in valid_topic_ids],
                 )
 
-        await self._session.commit()
         return await self.get_by_id(task.id)
 
     async def update(self, task_id: uuid.UUID, **fields) -> Task:
@@ -82,14 +81,13 @@ class TaskRepository:
             )
             task.topics = list(topics_result.scalars().all())
 
-        await self._session.commit()
         return await self.get_by_id(task_id)
 
     async def delete(self, task_id: uuid.UUID) -> None:
         task = await self.get_by_id(task_id)
         if task:
             await self._session.delete(task)
-            await self._session.commit()
+            await self._session.flush()
 
     async def list_active(
         self,
@@ -208,7 +206,6 @@ class TaskRepository:
         result = await self._session.execute(
             sa_delete(Task).where(Task.id.in_(task_ids), Task.user_id == user_id)
         )
-        await self._session.commit()
         return result.rowcount
 
     async def bulk_archive(self, task_ids: list[uuid.UUID]) -> None:
@@ -219,7 +216,6 @@ class TaskRepository:
             .where(Task.id.in_(task_ids))
             .values(archived=True, archived_at=now)
         )
-        await self._session.commit()
 
     async def count_tasks_in_window(
         self,

@@ -48,6 +48,16 @@ def _make_template(
     return template
 
 
+def _make_uow(template_repo: AsyncMock, task_repo: AsyncMock) -> AsyncMock:
+    """Build a mock UnitOfWork wrapping the given repo mocks."""
+    mock_uow = AsyncMock()
+    mock_uow.templates = template_repo
+    mock_uow.tasks = task_repo
+    mock_uow.commit = AsyncMock()
+    mock_uow.rollback = AsyncMock()
+    return mock_uow
+
+
 # ---------------------------------------------------------------------------
 # advance_next_run_at
 # ---------------------------------------------------------------------------
@@ -104,14 +114,8 @@ class TestRecurringServiceCreateTemplate:
     def _make_service(self) -> tuple[RecurringService, AsyncMock, AsyncMock]:
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        mock_topic_repo.get_by_ids_for_user.return_value = []
-
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         return service, mock_template_repo, mock_task_repo
 
     @pytest.mark.asyncio
@@ -196,14 +200,8 @@ class TestRecurringServiceCreateDueInstances:
     def _make_service(self) -> tuple[RecurringService, AsyncMock, AsyncMock]:
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        mock_topic_repo.get_by_ids_for_user.return_value = []
-
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         return service, mock_template_repo, mock_task_repo
 
     @pytest.mark.asyncio
@@ -332,12 +330,8 @@ class TestRecurringServiceStopTemplate:
     def _make_service(self) -> tuple[RecurringService, AsyncMock]:
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         return service, mock_template_repo
 
     @pytest.mark.asyncio
@@ -387,11 +381,9 @@ class TestRecurringServiceDefaultNow:
         """create_due_instances uses current UTC time when now is not provided."""
         mock_template_repo = AsyncMock()
         mock_template_repo.get_due_templates.return_value = []
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=AsyncMock(),
-            topic_repo=AsyncMock(),
-        )
+        mock_task_repo = AsyncMock()
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         count = await service.create_due_instances()  # no now
         assert count == 0
         mock_template_repo.get_due_templates.assert_called_once()
@@ -403,7 +395,7 @@ class TestRecurringServiceDefaultNow:
         """create_template_with_first_instance uses UTC now when not provided."""
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
 
         template = _make_template()
         mock_template_repo.create.return_value = template
@@ -413,11 +405,7 @@ class TestRecurringServiceDefaultNow:
         task.topics = []
         mock_task_repo.create.return_value = task
 
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        service = RecurringService(uow=mock_uow)
         _, _ = await service.create_template_with_first_instance(
             user_id=uuid.uuid4(),
             title="Test",
@@ -447,12 +435,8 @@ class TestRecurringServiceUpdateTemplate:
     def _make_service(self) -> tuple[RecurringService, AsyncMock]:
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         return service, mock_template_repo
 
     @pytest.mark.asyncio
@@ -601,13 +585,8 @@ class TestRecurringServiceCreateTemplateDaily:
     def _make_service(self) -> tuple[RecurringService, AsyncMock, AsyncMock]:
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        mock_topic_repo.get_by_ids_for_user.return_value = []
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         return service, mock_template_repo, mock_task_repo
 
     @pytest.mark.asyncio
@@ -768,12 +747,8 @@ class TestCreateDueInstancesDueDate:
     def _make_service(self) -> tuple[RecurringService, AsyncMock, AsyncMock]:
         mock_template_repo = AsyncMock()
         mock_task_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        service = RecurringService(
-            template_repo=mock_template_repo,
-            task_repo=mock_task_repo,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_template_repo, mock_task_repo)
+        service = RecurringService(uow=mock_uow)
         return service, mock_template_repo, mock_task_repo
 
     @pytest.mark.asyncio
