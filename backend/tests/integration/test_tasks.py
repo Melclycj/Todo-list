@@ -51,9 +51,9 @@ class TestTaskCreate:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_task_unauthenticated_returns_403(self, client):
+    async def test_create_task_unauthenticated_returns_401(self, client):
         resp = await client.post("/api/v1/tasks", json={"title": "Task"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     @pytest.mark.asyncio
     async def test_create_task_with_description(self, client, auth_headers):
@@ -89,9 +89,9 @@ class TestTaskList:
         assert tasks[0]["title"] == "Walk the dog"
 
     @pytest.mark.asyncio
-    async def test_list_tasks_unauthenticated_returns_403(self, client):
+    async def test_list_tasks_unauthenticated_returns_401(self, client):
         resp = await client.get("/api/v1/tasks")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestTaskGet:

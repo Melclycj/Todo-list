@@ -48,7 +48,7 @@ def advance_next_run_at(
         day = min(from_dt.day, max_day)
         return from_dt.replace(year=year, month=month, day=day)
 
-    raise ValueError(f"Unknown frequency: {frequency}")
+    raise AppError(f"Unknown frequency: {frequency}")
 
 
 # ---------------------------------------------------------------------------
