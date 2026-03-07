@@ -36,7 +36,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-react': ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
           'vendor-query': ['@tanstack/react-query'],
           'vendor-radix': [
             '@radix-ui/react-dialog',
@@ -48,6 +48,8 @@ export default defineConfig({
             '@radix-ui/react-label',
             '@radix-ui/react-slot',
           ],
+          'vendor-http': ['axios'],
+          'vendor-ui': ['sonner', 'lucide-react'],
         },
       },
     },

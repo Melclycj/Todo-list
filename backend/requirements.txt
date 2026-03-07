@@ -14,6 +14,7 @@ python-multipart==0.0.22
 apscheduler==3.10.4
 httpx==0.28.1
 pytz==2024.2
+brotli==1.1.0
 
 # Testing
 pytest==8.3.4
