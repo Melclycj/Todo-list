@@ -1,11 +1,14 @@
 """
 Task service — business logic for task CRUD, status transitions, and archiving.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from app.exceptions import AppError
 from app.models.task import Task, TaskStatus
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +122,7 @@ class TaskService:
             topic_ids=topic_ids or [],
         )
         await self._uow.commit()
+        logger.info("task.created", extra={"user_id": str(user_id), "task_id": str(task.id)})
         return task
 
     # ------------------------------------------------------------------
@@ -216,6 +220,15 @@ class TaskService:
 
         updated_task = await self._uow.tasks.update(task_id, **update_fields)
         await self._uow.commit()
+        logger.info(
+            "task.status_changed",
+            extra={
+                "user_id": str(user_id),
+                "task_id": str(task_id),
+                "from_status": task.status.value,
+                "to_status": new_status.value,
+            },
+        )
 
         # Notify SSE so reminder banner updates within 1 second (FR-07)
         if self._sse_manager is not None:
@@ -254,6 +267,7 @@ class TaskService:
             raise PermissionError("Not authorized")
         await self._uow.tasks.delete(task_id)
         await self._uow.commit()
+        logger.info("task.deleted", extra={"user_id": str(user_id), "task_id": str(task_id)})
 
     async def bulk_delete_tasks(
         self, user_id: uuid.UUID, task_ids: list[uuid.UUID]
@@ -265,6 +279,7 @@ class TaskService:
             raise AppError("Cannot delete more than 50 tasks at once")
         count = await self._uow.tasks.bulk_delete_for_user(task_ids, user_id)
         await self._uow.commit()
+        logger.info("task.bulk_deleted", extra={"user_id": str(user_id), "count": count})
         return count
 
     # ------------------------------------------------------------------

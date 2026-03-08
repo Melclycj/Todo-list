@@ -49,25 +49,25 @@ def create_scheduler(
 
             try:
                 archived = await task_service.archive_done_tasks(today_4am=today_4am)
-                logger.info("Archived %d tasks at 4am", archived)
+                logger.info("scheduler.archive_done", extra={"archived_count": archived})
             except Exception:
-                logger.exception("Error during archive_done_tasks job")
+                logger.exception("scheduler.archive_done.error")
                 await uow.rollback()
 
             try:
                 created = await recurring_service.create_due_instances(now=now)
-                logger.info("Created %d recurring instances at 4am", created)
+                logger.info("scheduler.recurring_spawn", extra={"spawned_count": created})
             except Exception:
-                logger.exception("Error during create_recurring_instances job")
+                logger.exception("scheduler.recurring_spawn.error")
                 await uow.rollback()
 
     async def _push_reminder():
         """Broadcast a reminder update to all connected SSE clients."""
         try:
             await sse_manager.broadcast("update")
-            logger.info("Pushed reminder update via SSE")
+            logger.info("scheduler.reminder_push")
         except Exception:
-            logger.exception("Error during push_reminder job")
+            logger.exception("scheduler.reminder_push.error")
 
     scheduler.add_job(
         _archive_and_spawn,

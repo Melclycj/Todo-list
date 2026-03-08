@@ -17,12 +17,17 @@ from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.exceptions import AppError
 from app.limiter import limiter
+from app.logging_config import configure_logging
+from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.error_handler import (
     app_error_handler,
     global_exception_handler,
     not_found_handler,
     permission_error_handler,
 )
+from app.middleware.request_id import RequestIDMiddleware
+
+configure_logging(log_level=settings.log_level, log_file=settings.log_file)
 
 # Routers (imported lazily to avoid circular imports at module level)
 from app.routers import auth, tasks, topics, archive, recurring, reminder
@@ -58,6 +63,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(AccessLogMiddleware)
+app.add_middleware(RequestIDMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

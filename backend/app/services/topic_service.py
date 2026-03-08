@@ -1,10 +1,13 @@
 """
 Topic service — CRUD for user-defined task categories.
 """
+import logging
 import uuid
 
 from app.exceptions import AppError
 from app.models.topic import Topic
+
+logger = logging.getLogger(__name__)
 
 
 MAX_TOPICS_PER_USER = 10
@@ -35,6 +38,7 @@ class TopicService:
 
         topic = await self._uow.topics.create(user_id=user_id, name=name)
         await self._uow.commit()
+        logger.info("topic.created", extra={"user_id": str(user_id), "topic_id": str(topic.id), "topic_name": name})
         return topic
 
     async def list_topics(self, user_id: uuid.UUID) -> list[Topic]:
@@ -61,6 +65,7 @@ class TopicService:
 
         result = await self._uow.topics.update(topic_id, name=new_name)
         await self._uow.commit()
+        logger.info("topic.renamed", extra={"user_id": str(user_id), "topic_id": str(topic_id), "topic_name": new_name})
         return result
 
     async def delete_topic(self, topic_id: uuid.UUID, user_id: uuid.UUID) -> None:
@@ -72,3 +77,4 @@ class TopicService:
         # Deletion removes the tag from all associated tasks (FK cascade via join table)
         await self._uow.topics.delete(topic_id)
         await self._uow.commit()
+        logger.info("topic.deleted", extra={"user_id": str(user_id), "topic_id": str(topic_id)})

@@ -2,6 +2,7 @@
 Authentication service — registration, login, token refresh, logout.
 """
 import hashlib
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -9,6 +10,8 @@ from app.auth.jwt import create_access_token
 from app.config import settings
 from app.exceptions import AppError
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -32,6 +35,7 @@ class AuthService:
         hashed = self._hasher.hash(password)
         user = await self._uow.users.create(email=email, hashed_password=hashed)
         await self._uow.commit()
+        logger.info("user.registered", extra={"user_id": str(user.id)})
         return user
 
     async def login(
@@ -45,6 +49,7 @@ class AuthService:
         """
         user = await self._uow.users.get_by_email(email)
         if user is None or not self._hasher.verify(password, user.hashed_password):
+            logger.warning("user.login_failed", extra={"email_domain": email.split("@")[-1]})
             raise AppError("Invalid credentials")
 
         access_token = create_access_token(user_id=user.id)
@@ -59,6 +64,7 @@ class AuthService:
             expires_at=expires_at,
         )
         await self._uow.commit()
+        logger.info("user.login", extra={"user_id": str(user.id)})
         return access_token, raw_refresh
 
     async def refresh(self, raw_refresh_token: str) -> str:
@@ -86,6 +92,7 @@ class AuthService:
         if record is not None:
             await self._uow.tokens.revoke(record.id)
             await self._uow.commit()
+            logger.info("user.logout", extra={"user_id": str(record.user_id)})
 
 
 def _hash_token(raw: str) -> str:
