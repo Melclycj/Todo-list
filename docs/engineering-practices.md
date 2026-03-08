@@ -1,6 +1,6 @@
 # Engineering Practices & Operational Readiness
 
-> Audit date: 2026-03-04 | Stack: FastAPI + React 19 + PostgreSQL
+> Audit date: 2026-03-04 | Last updated: 2026-03-08 | Stack: FastAPI + React 19 + PostgreSQL
 
 ---
 
@@ -95,41 +95,54 @@ raise AppError(f"Unknown frequency: {frequency}")
 
 #### Backend
 
-| Optimization | What it is | Applicable here? | Notes |
+| Optimization | What it is | Status | Notes |
 |---|---|---|---|
-| **Database connection pooling** | Reuse DB connections instead of opening a new one per request | ✅ Already done | SQLAlchemy async pool used |
-| **Query optimization / N+1 prevention** | Fetch related data in one query instead of N | ✅ Worth auditing | Check `JOIN` vs lazy-load in repositories |
-| **Database indexing** | Index columns used in WHERE / ORDER BY | ✅ Apply now | Add indexes on `user_id`, `topic_id`, `status`, `due_date` in tasks table |
-| **Response caching (HTTP headers)** | `Cache-Control`, `ETag` headers on static data | ⚠️ Partial | Useful for topic list (rarely changes), not tasks |
+| **Database connection pooling** | Reuse DB connections instead of opening a new one per request | ✅ Done | SQLAlchemy async pool used |
+| **Query optimization / N+1 prevention** | Fetch related data in one query instead of N | ✅ Done | `selectinload` used in repositories; no lazy-loading |
+| **Database indexing** | Index columns used in WHERE / ORDER BY | ⚠️ Pending | Add indexes on `user_id`, `status`, `due_date` via Alembic migration |
+| **Response caching (HTTP headers)** | `Cache-Control`, `ETag` headers on static data | ⚠️ Partial | Useful for topic list (rarely changes); not tasks |
 | **In-process caching (e.g., Redis)** | Cache expensive query results | ⚠️ Later | Adds infrastructure; worthwhile if user count grows |
-| **Pagination** | Return pages of results instead of all rows | ✅ Already implemented | Confirm limit defaults are small |
-| **Rate limiting** | Throttle requests per client | ✅ Already done | `slowapi` is installed and integrated |
-| **Async I/O everywhere** | Non-blocking DB and network calls | ✅ Already done | Full async stack (FastAPI + asyncpg + SQLAlchemy async) |
-| **Compression (gzip/brotli)** | Compress HTTP responses | ✅ Add now | One line in FastAPI: `app.add_middleware(GZipMiddleware)` |
-| **Background tasks for non-critical work** | Offload slow work from the request path | ✅ Already done | APScheduler handles archiving and recurring tasks |
-| **SSE over polling** | Push updates instead of client polling | ✅ Already done | Reminder SSE endpoint implemented |
+| **Pagination** | Return pages of results instead of all rows | ✅ Done | Limit defaults enforced in all list endpoints |
+| **Rate limiting** | Throttle requests per client | ✅ Done | `slowapi` installed and integrated on all endpoints |
+| **Async I/O everywhere** | Non-blocking DB and network calls | ✅ Done | Full async stack: FastAPI + asyncpg + SQLAlchemy async |
+| **Compression (gzip/brotli)** | Compress HTTP responses | ✅ Done | `GZipMiddleware` added; `brotli` installed for auto-negotiation |
+| **Background tasks for non-critical work** | Offload slow work from the request path | ✅ Done | APScheduler handles archiving and recurring task spawning |
+| **SSE over polling** | Push updates instead of client polling | ✅ Done | Reminder SSE endpoint implemented; exponential-backoff reconnect |
+| **Unit of Work pattern** | Atomic multi-step writes across repositories | ✅ Done | All services own the commit boundary; repos are flush-only |
+| **Scheduler race guard** | Prevent duplicate task spawning under concurrent workers | ✅ Done | `SELECT FOR UPDATE SKIP LOCKED` on `get_due_templates()` |
 
 #### Frontend
 
-| Optimization | What it is | Applicable here? | Notes |
+| Optimization | What it is | Status | Notes |
 |---|---|---|---|
-| **Code splitting** | Load JS bundles on demand | ✅ Already done | `manualChunks` configured in vite.config.ts |
-| **Tree shaking** | Remove unused exports at build time | ✅ Automatic | Vite + ESM handles this |
-| **Image optimization** | Compress and serve correct formats | ➖ Not applicable | No user images in this app |
-| **React Query caching** | Cache and deduplicate API calls | ✅ Already done | `@tanstack/react-query` used throughout |
-| **Optimistic UI updates** | Update UI before server confirms** | ⚠️ Optional | Improves perceived speed for task toggles |
-| **Virtualization** | Render only visible rows in long lists | ⚠️ Consider if >200 tasks | Use `@tanstack/react-virtual` if lists grow large |
-| **Debounce / throttle** | Limit how often events fire | ✅ Check input handlers | Relevant for search/filter inputs if added |
-| **Service Worker / PWA** | Cache assets offline | ⚠️ Future consideration | Nice-to-have for mobile use |
-| **Bundle size audit** | Identify oversized dependencies | ✅ Do now | Run `npx vite-bundle-visualizer` |
-| **Font optimization** | Subset fonts, use `font-display: swap` | ⚠️ If custom fonts added | Not critical currently |
+| **Code splitting** | Load JS bundles on demand | ✅ Done | `manualChunks` in `vite.config.ts`; 7 separate chunks |
+| **Tree shaking** | Remove unused exports at build time | ✅ Done | Vite + ESM; all libraries imported by named export |
+| **Image optimization** | Compress and serve correct formats | ➖ N/A | No user images in this app |
+| **React Query caching** | Cache and deduplicate API calls | ✅ Done | `@tanstack/react-query` used throughout |
+| **Optimistic UI updates** | Update UI before server confirms | ⚠️ Optional | Improves perceived speed for status toggles |
+| **Virtualization** | Render only visible rows in long lists | ⚠️ Future | Use `@tanstack/react-virtual` if task lists grow past ~200 rows |
+| **Debounce / throttle** | Limit how often events fire | ✅ Done | Search debounced (300ms); resize drag handlers RAF-throttled |
+| **Service Worker / PWA** | Cache assets offline | ⚠️ Future | Nice-to-have for mobile use |
+| **Bundle size audit** | Identify oversized dependencies | ✅ Done | `react-dom/client` split fixed; `index.js` reduced 352 KB → 96 KB (gzip: 111 KB → 29 KB) |
+| **Font optimization** | Subset fonts, use `font-display: swap` | ⚠️ If custom fonts added | Not applicable currently |
 
-#### Database (most impactful now)
+#### Bundle breakdown (post-audit)
+
+| Chunk | Size (minified) | Gzipped | Contents |
+|---|---|---|---|
+| `vendor-react` | 229 KB | 73 KB | react, react-dom, react-dom/client, react-router-dom |
+| `vendor-radix` | 94 KB | 29 KB | All Radix UI primitives + floating-ui |
+| `index` | 96 KB | 29 KB | App code + date-fns + tailwind-merge + clsx |
+| `vendor-http` | 37 KB | 15 KB | axios |
+| `vendor-ui` | 39 KB | 12 KB | sonner, lucide-react |
+| `vendor-query` | 36 KB | 11 KB | @tanstack/react-query |
+| Page chunks | < 6 KB each | < 2 KB | ArchivePage, RecurringPage, TopicListPage |
+
+#### Database (pending — most impactful remaining item)
 
 ```sql
 -- Recommended indexes for the tasks table
 CREATE INDEX idx_tasks_user_id     ON tasks(user_id);
-CREATE INDEX idx_tasks_topic_id    ON tasks(topic_id);
 CREATE INDEX idx_tasks_status      ON tasks(status);
 CREATE INDEX idx_tasks_due_date    ON tasks(due_date);
 CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);  -- composite for filtered lists
@@ -137,12 +150,10 @@ CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);  -- composite for 
 
 Add these via an Alembic migration.
 
-#### Immediate wins (low effort, high impact)
+#### Remaining action items (low effort, high impact)
 
-1. **GZip middleware** — single line addition to `main.py`
-2. **Database indexes** — Alembic migration, zero app code change
-3. **Fix `ValueError` → `AppError`** in `recurring_service.py`
-4. **Bundle visualizer** — identify if any remaining package is unexpectedly large
+1. **Database indexes** — Alembic migration, zero app code change
+2. **Structured JSON logging** — add `python-json-logger`, request ID middleware, access log middleware
 
 ---
 
@@ -445,16 +456,19 @@ Keep a human-readable log of changes at the project root. Format:
 
 ## Quick Reference: Action Items
 
-| Priority | Area | Action |
-|---|---|---|
-| 🔴 High | Error handling | Fix `ValueError` → `AppError` in `recurring_service.py:51` |
-| 🔴 High | Security | Add DB indexes via Alembic migration |
-| 🟡 Medium | Performance | Add `GZipMiddleware` to `main.py` |
-| 🟡 Medium | Logging | Add request ID middleware + access log middleware |
-| 🟡 Medium | Logging | Switch to structured JSON logging with `python-json-logger` |
-| 🟡 Medium | Monitoring | Set up Sentry (free tier) for error tracking |
-| 🟡 Medium | Monitoring | Set up uptime monitor on `/health` endpoint |
-| 🟢 Low | Monitoring | Add Prometheus metrics + Grafana dashboard |
-| 🟢 Low | Version control | Protect `main` branch on GitHub |
-| 🟢 Low | Version control | Start tagging releases with `git tag` |
-| 🟢 Low | Frontend | Run `npx vite-bundle-visualizer` to audit bundle size |
+| Priority | Area | Action | Status |
+|---|---|---|---|
+| 🔴 High | Error handling | Fix `ValueError` → `AppError` in `recurring_service.py` | ✅ Done |
+| 🔴 High | Database | Add DB indexes via Alembic migration | ⚠️ Pending |
+| 🟡 Medium | Performance | Add `GZipMiddleware` + brotli to `main.py` | ✅ Done |
+| 🟡 Medium | Performance | Unit of Work pattern — atomic multi-step service writes | ✅ Done |
+| 🟡 Medium | Performance | Scheduler race guard — `SELECT FOR UPDATE SKIP LOCKED` | ✅ Done |
+| 🟡 Medium | Performance | Bundle audit — `react-dom/client` split, axios/sonner extracted | ✅ Done |
+| 🟡 Medium | Performance | RAF-throttle sidebar and column resize drag handlers | ✅ Done |
+| 🟡 Medium | Logging | Add request ID middleware + access log middleware | ⚠️ Pending |
+| 🟡 Medium | Logging | Switch to structured JSON logging with `python-json-logger` | ⚠️ Pending |
+| 🟡 Medium | Monitoring | Set up Sentry (free tier) for error tracking | ⚠️ Pending |
+| 🟡 Medium | Monitoring | Set up uptime monitor on `/health` endpoint | ⚠️ Pending |
+| 🟢 Low | Monitoring | Add Prometheus metrics + Grafana dashboard | ⚠️ Future |
+| 🟢 Low | Version control | Protect `main` branch on GitHub | ⚠️ Pending |
+| 🟢 Low | Version control | Start tagging releases with `git tag` | ⚠️ Pending |
