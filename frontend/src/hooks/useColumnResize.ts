@@ -39,6 +39,7 @@ function readSavedWidths(): Record<ColumnKey, number> {
 export function useColumnResize() {
   const [widths, setWidths] = useState<Record<ColumnKey, number>>(readSavedWidths)
   const cleanupRef = useRef<(() => void) | null>(null)
+  const rafRef = useRef<number>(0)
 
   // Guarantee listeners are removed if the component unmounts mid-drag
   useEffect(() => {
@@ -51,11 +52,15 @@ export function useColumnResize() {
     const startWidth = widths[column]
 
     function onMouseMove(event: globalThis.MouseEvent) {
-      const newWidth = Math.max(80, startWidth + (event.clientX - startX))
-      setWidths((prev) => ({ ...prev, [column]: newWidth }))
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => {
+        const newWidth = Math.max(80, startWidth + (event.clientX - startX))
+        setWidths((prev) => ({ ...prev, [column]: newWidth }))
+      })
     }
 
     function cleanup() {
+      cancelAnimationFrame(rafRef.current)
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
       cleanupRef.current = null
