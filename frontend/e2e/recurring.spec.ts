@@ -46,8 +46,9 @@ test.describe('Recurring Task Creation', () => {
     await expect(page.getByText(title, { exact: true })).toBeVisible()
     // Frequency column shows Monthly
     await expect(page.getByText('Monthly', { exact: true })).toBeVisible()
-    // Next due column shows "Next due:"
-    await expect(page.getByText(/Next due:/)).toBeVisible()
+    // Next due column shows a formatted date (e.g. "Mar 18, 2026")
+    const row = page.getByRole('row', { name: new RegExp(title) })
+    await expect(row.getByText(/[A-Z][a-z]{2} \d{1,2}, \d{4}/)).toBeVisible()
   })
 
   test('creating a recurring template also creates an immediate instance', async ({ page }) => {
@@ -74,11 +75,15 @@ test.describe('Recurring Task Creation', () => {
     // Navigate to Recurring Tasks
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
 
-    const row = page.getByRole('row', { name: new RegExp(title) })
-    await row.hover()
+    // Enter edit mode via the toolbar pencil button
+    await page.getByTitle('Select to stop').click()
 
-    // Click the stop (square) button
-    await row.getByRole('button', { name: 'Stop' }).click()
+    // Check the checkbox on the target row
+    const row = page.getByRole('row', { name: new RegExp(title) })
+    await row.getByRole('checkbox').check()
+
+    // Click the stop (trash) toolbar button
+    await page.getByTitle('Stop selected').click()
 
     // Confirm in the dialog
     await page.getByRole('dialog').getByRole('button', { name: 'Stop' }).click()
@@ -135,7 +140,9 @@ test.describe('Recurring Task Creation', () => {
     await page.getByRole('link', { name: 'Recurring Tasks' }).click()
     await expect(page.getByText(title, { exact: true })).toBeVisible()
     await expect(page.getByText('Daily', { exact: true })).toBeVisible()
-    await expect(page.getByText(/Next due:/)).toBeVisible()
+    // Next due column shows a formatted date (tomorrow for daily tasks)
+    const row = page.getByRole('row', { name: new RegExp(title) })
+    await expect(row.getByText(/[A-Z][a-z]{2} \d{1,2}, \d{4}/)).toBeVisible()
   })
 
   test('create recurring task from Recurring Tasks page via New Template button', async ({ page }) => {
