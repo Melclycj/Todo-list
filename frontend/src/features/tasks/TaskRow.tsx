@@ -61,18 +61,29 @@ export function EditableCell({
     if (!multiline && e.key === 'Enter') { e.preventDefault(); commit() }
   }
 
+  // Auto-resize a textarea to fit its content (same height as the display span).
+  // Called on mount (autoFocus ref) and on every keystroke.
+  function autoResize(el: HTMLTextAreaElement | null) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
   if (editing) {
     if (multiline) {
       return (
         <textarea
+          ref={autoResize}
           value={draft}
           autoFocus
-          rows={3}
-          onChange={(e) => setDraft(e.target.value)}
+          rows={1}
+          onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
           onBlur={commit}
           onKeyDown={handleKeyDown}
           onClick={(e) => e.stopPropagation()}
-          className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none resize-y"
+          // ring-1 uses box-shadow — does NOT add to box height unlike border.
+          // px-0.5 py-0 matches the display span padding exactly.
+          className="w-full bg-background ring-1 ring-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5"
         />
       )
     }
@@ -94,7 +105,8 @@ export function EditableCell({
     <span
       onClick={startEdit}
       className={cn(
-        'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm',
+        // leading-5 = line-height: 1.25rem — matches textarea leading above.
+        'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm leading-5 whitespace-pre-wrap',
         disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40',
         textClassName
       )}
