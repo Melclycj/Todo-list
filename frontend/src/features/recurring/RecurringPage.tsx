@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { Plus, Repeat2, Check, Trash2, Pencil } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,8 @@ import {
   useUpdateRecurringTemplate,
 } from '@/hooks/useRecurring'
 import { useTopics } from '@/hooks/useTopics'
+import { useRecurringColumnResize } from '@/hooks/useRecurringColumnResize'
+import type { RecurringColumnKey } from '@/hooks/useRecurringColumnResize'
 import { EditableCell } from '@/features/tasks/TaskRow'
 import type { RecurringTemplate, RecurringFrequency, RecurringUpdatePayload } from '@/types/recurring'
 import { toast } from 'sonner'
@@ -31,7 +34,7 @@ const FREQ_LABELS: Record<RecurringFrequency, string> = {
   monthly: 'Monthly',
 }
 
-function formatNextDue(template: RecurringTemplate): string {
+export function formatNextDue(template: RecurringTemplate): string {
   if (!template.is_active) return 'Stopped'
   try {
     return format(parseISO(template.next_run_at), 'MMM d, yyyy')
@@ -204,17 +207,62 @@ function RecurringTopicSelector({ template, disabled }: RecurringTopicSelectorPr
 }
 
 // ---------------------------------------------------------------------------
+// Table header with drag handles
+// ---------------------------------------------------------------------------
+
+const COLUMNS: { key: RecurringColumnKey; label: string }[] = [
+  { key: 'status', label: 'Status' },
+  { key: 'title', label: 'Title' },
+  { key: 'frequency', label: 'Frequency' },
+  { key: 'nextDue', label: 'Next Due' },
+  { key: 'topics', label: 'Topics' },
+  { key: 'description', label: 'Description' },
+]
+
+interface RecurringTableHeaderProps {
+  widths: Record<RecurringColumnKey, number>
+  onStartDrag: (column: RecurringColumnKey, e: MouseEvent) => void
+  isEditMode: boolean
+}
+
+function RecurringTableHeader({ widths, onStartDrag, isEditMode }: RecurringTableHeaderProps) {
+  return (
+    <thead className="sticky top-0 z-10 bg-muted">
+      <tr>
+        {isEditMode && <th className="w-10 border-b border-border" />}
+        {COLUMNS.map((col) => (
+          <th
+            key={col.key}
+            style={{ width: widths[col.key], minWidth: widths[col.key] }}
+            className="relative text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2 border-b border-border select-none"
+          >
+            {col.label}
+            <div
+              className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-border hover:bg-primary transition-colors"
+              onMouseDown={(e) => onStartDrag(col.key, e)}
+            />
+          </th>
+        ))}
+      </tr>
+    </thead>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Template row
 // ---------------------------------------------------------------------------
 
+const CHECKBOX_COLUMN_WIDTH = 40
+
 interface TemplateRowProps {
   template: RecurringTemplate
+  widths: Record<RecurringColumnKey, number>
   isEditMode: boolean
   isSelected: boolean
   onToggleSelect: (id: string) => void
 }
 
-function TemplateRow({ template, isEditMode, isSelected, onToggleSelect }: TemplateRowProps) {
+function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect }: TemplateRowProps) {
   const { mutate: update } = useUpdateRecurringTemplate()
   const isInactive = !template.is_active
 
@@ -243,12 +291,12 @@ function TemplateRow({ template, isEditMode, isSelected, onToggleSelect }: Templ
       )}
 
       {/* Status — recurring icon */}
-      <td className="px-4 py-3 w-16 text-center">
+      <td style={{ width: widths.status }} className="px-3 py-2 text-center">
         <Repeat2 size={14} className="inline text-muted-foreground" aria-label="Recurring" />
       </td>
 
       {/* Title */}
-      <td className="px-4 py-3 text-sm font-medium max-w-[200px]">
+      <td style={{ width: widths.title }} className="px-3 py-2">
         <EditableCell
           inputValue={template.title}
           displayText={template.title}
@@ -259,7 +307,7 @@ function TemplateRow({ template, isEditMode, isSelected, onToggleSelect }: Templ
       </td>
 
       {/* Frequency */}
-      <td className="px-4 py-3">
+      <td style={{ width: widths.frequency }} className="px-3 py-2">
         <EditableSelectCell
           value={template.frequency}
           onSave={(val) => saveField({ frequency: val })}
@@ -268,7 +316,7 @@ function TemplateRow({ template, isEditMode, isSelected, onToggleSelect }: Templ
       </td>
 
       {/* Next Due */}
-      <td className="px-4 py-3">
+      <td style={{ width: widths.nextDue }} className="px-3 py-2">
         <EditableCell
           inputValue={nextRunInput}
           displayText={formatNextDue(template)}
@@ -281,16 +329,17 @@ function TemplateRow({ template, isEditMode, isSelected, onToggleSelect }: Templ
       </td>
 
       {/* Topics */}
-      <td className="px-4 py-3">
+      <td style={{ width: widths.topics }} className="px-3 py-2">
         <RecurringTopicSelector template={template} disabled={isInactive} />
       </td>
 
       {/* Description */}
-      <td className="px-4 py-3">
+      <td style={{ width: widths.description }} className="px-3 py-2">
         <EditableCell
           inputValue={template.description ?? ''}
           displayText={template.description ?? ''}
           placeholder="No description"
+          multiline
           onSave={(val) => saveField({ description: val || null })}
           disabled={isInactive}
           textClassName="text-muted-foreground"
@@ -311,6 +360,11 @@ export function RecurringPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmStop, setConfirmStop] = useState(false)
   const { mutate: stop, isPending: isStopping } = useStopRecurringTemplate()
+  const { widths, startColumnDrag } = useRecurringColumnResize()
+
+  const totalWidth =
+    Object.values(widths).reduce((sum, w) => sum + w, 0) +
+    (isEditMode ? CHECKBOX_COLUMN_WIDTH : 0)
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -386,24 +440,22 @@ export function RecurringPage() {
         ) : templates.length === 0 ? (
           <TaskEmptyState isRecurring onCreateTask={() => setCreateOpen(true)} />
         ) : (
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-border bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-                  {isEditMode && <th className="px-3 py-2 w-10"></th>}
-                  <th className="px-4 py-2 w-16 text-center">Status</th>
-                  <th className="px-4 py-2">Title</th>
-                  <th className="px-4 py-2 whitespace-nowrap">Frequency</th>
-                  <th className="px-4 py-2 whitespace-nowrap">Next Due</th>
-                  <th className="px-4 py-2">Topics</th>
-                  <th className="px-4 py-2">Description</th>
-                </tr>
-              </thead>
+          <div className="border border-border rounded-lg overflow-auto h-full">
+            <table
+              className="border-collapse"
+              style={{ tableLayout: 'fixed', width: totalWidth, minWidth: totalWidth }}
+            >
+              <RecurringTableHeader
+                widths={widths}
+                onStartDrag={startColumnDrag}
+                isEditMode={isEditMode}
+              />
               <tbody>
                 {templates.map((t) => (
                   <TemplateRow
                     key={t.id}
                     template={t}
+                    widths={widths}
                     isEditMode={isEditMode}
                     isSelected={selectedIds.has(t.id)}
                     onToggleSelect={toggleSelect}

@@ -19,6 +19,7 @@ export interface EditableCellProps {
   displayText: string
   placeholder?: string
   inputType?: 'text' | 'date'
+  multiline?: boolean
   onSave: (value: string) => void
   textClassName?: string
   disabled?: boolean
@@ -29,6 +30,7 @@ export function EditableCell({
   displayText,
   placeholder = '—',
   inputType = 'text',
+  multiline,
   onSave,
   textClassName,
   disabled,
@@ -54,11 +56,26 @@ export function EditableCell({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') { e.preventDefault(); commit() }
     if (e.key === 'Escape') cancel()
+    // Single-line: Enter commits. Multiline: Enter inserts newline (textarea native).
+    if (!multiline && e.key === 'Enter') { e.preventDefault(); commit() }
   }
 
   if (editing) {
+    if (multiline) {
+      return (
+        <textarea
+          value={draft}
+          autoFocus
+          rows={3}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none resize-y"
+        />
+      )
+    }
     return (
       <input
         type={inputType}
@@ -192,6 +209,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           inputValue={task.description ?? ''}
           displayText={task.description ?? ''}
           placeholder="No description"
+          multiline
           onSave={(val) => saveField({ description: val || null })}
         />
       </td>
