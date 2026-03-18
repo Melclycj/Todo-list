@@ -16,6 +16,7 @@ export interface Task {
   created_at: string
   updated_at: string
   topics: Topic[]
+  recurring_template_id: string | null
 }
 
 export interface TaskCreatePayload {

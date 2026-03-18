@@ -189,6 +189,69 @@ class TestRecurringServiceCreateTemplate:
                 now=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),
             )
 
+    @pytest.mark.asyncio
+    async def test_first_instance_inherits_topics_from_template(self):
+        """Topics provided at creation time are propagated to the first task instance."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        user_id = uuid.uuid4()
+        topic_id_1 = uuid.uuid4()
+        topic_id_2 = uuid.uuid4()
+
+        template = _make_template(user_id=user_id)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = user_id
+        task.title = "Weekly Review – 2026-02-24"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=user_id,
+            title="Weekly Review",
+            frequency=RecurringFrequency.WEEKLY,
+            topic_ids=[topic_id_1, topic_id_2],
+            now=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),
+        )
+
+        # Both template and first task should receive the topic IDs
+        template_kwargs = mock_template_repo.create.call_args[1]
+        task_kwargs = mock_task_repo.create.call_args[1]
+        assert set(template_kwargs["topic_ids"]) == {topic_id_1, topic_id_2}
+        assert set(task_kwargs["topic_ids"]) == {topic_id_1, topic_id_2}
+
+    @pytest.mark.asyncio
+    async def test_first_instance_with_no_topics_passes_empty_list(self):
+        """When no topics are provided, the first instance gets an empty topic list."""
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        user_id = uuid.uuid4()
+
+        template = _make_template(user_id=user_id)
+        mock_template_repo.create.return_value = template
+
+        task = Task()
+        task.id = uuid.uuid4()
+        task.user_id = user_id
+        task.title = "Weekly Review – 2026-02-24"
+        task.status = TaskStatus.TODO
+        task.archived = False
+        task.topics = []
+        mock_task_repo.create.return_value = task
+
+        await service.create_template_with_first_instance(
+            user_id=user_id,
+            title="Weekly Review",
+            frequency=RecurringFrequency.WEEKLY,
+            # no topic_ids
+            now=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),
+        )
+
+        task_kwargs = mock_task_repo.create.call_args[1]
+        assert task_kwargs["topic_ids"] == []
+
 
 # ---------------------------------------------------------------------------
 # RecurringService.create_due_instances

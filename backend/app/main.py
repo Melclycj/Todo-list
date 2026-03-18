@@ -7,7 +7,7 @@ FastAPI application entry point.
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -26,6 +26,9 @@ from app.middleware.error_handler import (
     permission_error_handler,
 )
 from app.middleware.request_id import RequestIDMiddleware
+from app.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 configure_logging(log_level=settings.log_level, log_file=settings.log_file)
 
@@ -92,6 +95,17 @@ app.include_router(reminder.router, prefix="/api/v1")
 
 
 @app.get("/api/health", tags=["health"])
-async def health_check():
-    """Health check endpoint — no auth required."""
-    return {"success": True, "data": {"status": "ok"}, "error": None}
+async def health_check(session: AsyncSession = Depends(get_db)):
+    """Health check endpoint — no auth required. Returns 503 if DB is unreachable."""
+    try:
+        await session.execute(text("SELECT 1"))
+        db_status = "ok"
+        http_status = status.HTTP_200_OK
+    except Exception:
+        db_status = "unreachable"
+        http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return JSONResponse(
+        status_code=http_status,
+        content={"status": "ok" if db_status == "ok" else "degraded", "db": db_status},
+    )

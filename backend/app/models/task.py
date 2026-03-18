@@ -76,3 +76,10 @@ class Task(Base):
     recurring_instance: Mapped["RecurringInstance | None"] = relationship(  # noqa: F821
         "RecurringInstance", back_populates="task", uselist=False
     )
+
+    @property
+    def recurring_template_id(self) -> "uuid.UUID | None":
+        """Return the template id if this task was spawned by a recurring template."""
+        if self.recurring_instance is not None:
+            return self.recurring_instance.template_id
+        return None

@@ -14,27 +14,30 @@ function nextStatus(current: TaskStatus): TaskStatus {
   return 'in_progress'
 }
 
-interface EditableCellProps {
+export interface EditableCellProps {
   inputValue: string
   displayText: string
   placeholder?: string
   inputType?: 'text' | 'date'
   onSave: (value: string) => void
   textClassName?: string
+  disabled?: boolean
 }
 
-function EditableCell({
+export function EditableCell({
   inputValue,
   displayText,
   placeholder = '—',
   inputType = 'text',
   onSave,
   textClassName,
+  disabled,
 }: EditableCellProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(inputValue)
 
   function startEdit(e: React.MouseEvent) {
+    if (disabled) return
     e.stopPropagation()
     setDraft(inputValue)
     setEditing(true)
@@ -74,7 +77,8 @@ function EditableCell({
     <span
       onClick={startEdit}
       className={cn(
-        'cursor-text block min-h-[1.25rem] rounded px-0.5 -mx-0.5 hover:bg-accent/40 text-sm',
+        'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm',
+        disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40',
         textClassName
       )}
     >
@@ -138,13 +142,32 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
 
       {/* Title */}
       <td style={{ width: columnWidths.title }} className="px-3 py-2">
-        <EditableCell
-          inputValue={task.title}
-          displayText={task.title}
-          placeholder="Task title"
-          onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
-          textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
-        />
+        {task.recurring_template_id ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => toast.info('Titles of recurring task instances cannot be changed')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                toast.info('Titles of recurring task instances cannot be changed')
+              }
+            }}
+            className={cn(
+              'cursor-not-allowed block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm select-none',
+              isDone ? 'line-through text-muted-foreground' : ''
+            )}
+          >
+            {task.title}
+          </span>
+        ) : (
+          <EditableCell
+            inputValue={task.title}
+            displayText={task.title}
+            placeholder="Task title"
+            onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
+            textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
+          />
+        )}
       </td>
 
       {/* Due Date */}

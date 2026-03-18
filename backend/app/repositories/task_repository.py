@@ -9,6 +9,7 @@ from sqlalchemy import and_, delete as sa_delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.recurring import RecurringInstance  # noqa: F401 — registers relationship
 from app.models.task import Task, TaskStatus, task_topics
 from app.models.topic import Topic
 from app.services.reminder_service import get_day_window
@@ -24,7 +25,10 @@ class TaskRepository:
         result = await self._session.execute(
             select(Task)
             .where(Task.id == task_id)
-            .options(selectinload(Task.topics))
+            .options(
+                selectinload(Task.topics),
+                selectinload(Task.recurring_instance),
+            )
         )
         return result.scalar_one_or_none()
 
@@ -119,7 +123,10 @@ class TaskRepository:
             .where(Task.user_id == user_id)
             .where(Task.archived.is_(False))
             .where(active_condition)
-            .options(selectinload(Task.topics))
+            .options(
+                selectinload(Task.topics),
+                selectinload(Task.recurring_instance),
+            )
         )
 
         # Time window filter
