@@ -339,7 +339,7 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
           inputValue={template.description ?? ''}
           displayText={template.description ?? ''}
           placeholder="No description"
-          multiline
+          popupEdit
           onSave={(val) => saveField({ description: val || null })}
           disabled={isInactive}
           textClassName="text-muted-foreground"

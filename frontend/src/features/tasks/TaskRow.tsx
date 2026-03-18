@@ -7,6 +7,7 @@ import { TaskStatusBadge } from './TaskStatusBadge'
 import { TaskTopicSelector } from './TaskTopicSelector'
 import { useUpdateTaskStatus, useUpdateTask } from '@/hooks/useTasks'
 import { toast } from 'sonner'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 function nextStatus(current: TaskStatus): TaskStatus {
   if (current === 'in_progress') return 'done'
@@ -19,7 +20,14 @@ export interface EditableCellProps {
   displayText: string
   placeholder?: string
   inputType?: 'text' | 'date'
+  /** Render the editor as an inline auto-resizing textarea. */
   multiline?: boolean
+  /**
+   * Render the editor as a Popover overlay anchored to the cell.
+   * Implies multiline textarea. Max width is min(500px, 90vw).
+   * Click outside → commit. Escape → cancel.
+   */
+  popupEdit?: boolean
   onSave: (value: string) => void
   textClassName?: string
   disabled?: boolean
@@ -31,6 +39,7 @@ export function EditableCell({
   placeholder = '—',
   inputType = 'text',
   multiline,
+  popupEdit,
   onSave,
   textClassName,
   disabled,
@@ -55,57 +64,17 @@ export function EditableCell({
     setEditing(false)
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') cancel()
-    // Single-line: Enter commits. Multiline: Enter inserts newline (textarea native).
-    if (!multiline && e.key === 'Enter') { e.preventDefault(); commit() }
-  }
-
-  // Auto-resize a textarea to fit its content (same height as the display span).
-  // Called on mount (autoFocus ref) and on every keystroke.
+  // Auto-resize textarea to fit content height.
   function autoResize(el: HTMLTextAreaElement | null) {
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
   }
 
-  if (editing) {
-    if (multiline) {
-      return (
-        <textarea
-          ref={autoResize}
-          value={draft}
-          autoFocus
-          rows={1}
-          onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
-          onBlur={commit}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          // ring-1 uses box-shadow — does NOT add to box height unlike border.
-          // px-0.5 py-0 matches the display span padding exactly.
-          className="w-full bg-background ring-1 ring-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5"
-        />
-      )
-    }
-    return (
-      <input
-        type={inputType}
-        value={draft}
-        autoFocus
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={handleKeyDown}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none"
-      />
-    )
-  }
-
-  return (
+  const displaySpan = (
     <span
       onClick={startEdit}
       className={cn(
-        // leading-5 = line-height: 1.25rem — matches textarea leading above.
         'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm leading-5 whitespace-pre-wrap',
         disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40',
         textClassName
@@ -116,6 +85,86 @@ export function EditableCell({
       )}
     </span>
   )
+
+  // ── Popup mode ────────────────────────────────────────────────────────────
+  if (popupEdit) {
+    return (
+      <Popover
+        open={editing}
+        onOpenChange={(open) => {
+          if (!open) commit()   // click-outside or focus-leave → save
+        }}
+      >
+        <PopoverTrigger asChild>{displaySpan}</PopoverTrigger>
+        <PopoverContent
+          // style() keeps it below Tailwind purge and allows calc()
+          style={{ width: 'min(500px, 90vw)' }}
+          className="p-2"
+          align="start"
+          // Escape key: cancel (not commit) and prevent Radix from closing
+          // via the default handler (which would trigger onOpenChange → commit).
+          onEscapeKeyDown={(e) => { e.preventDefault(); cancel() }}
+          // Suppress auto-focus on the PopoverContent wrapper so our textarea
+          // autoFocus works without fighting Radix.
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <textarea
+            ref={autoResize}
+            value={draft}
+            autoFocus
+            rows={4}
+            onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); cancel() } }}
+            className="w-full bg-background text-sm focus:outline-none resize-none overflow-hidden leading-5 px-0.5 py-0"
+          />
+          <p className="text-[10px] text-muted-foreground/60 mt-1 select-none">
+            Click outside to save · Esc to cancel
+          </p>
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
+  // ── Inline multiline (textarea) ───────────────────────────────────────────
+  if (editing && multiline) {
+    return (
+      <textarea
+        ref={autoResize}
+        value={draft}
+        autoFocus
+        rows={1}
+        onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') cancel()
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full bg-background ring-1 ring-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5"
+      />
+    )
+  }
+
+  // ── Inline single-line (input) ────────────────────────────────────────────
+  if (editing) {
+    return (
+      <input
+        type={inputType}
+        value={draft}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') cancel()
+          if (e.key === 'Enter') { e.preventDefault(); commit() }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none"
+      />
+    )
+  }
+
+  return displaySpan
 }
 
 interface TaskRowProps {
@@ -221,7 +270,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           inputValue={task.description ?? ''}
           displayText={task.description ?? ''}
           placeholder="No description"
-          multiline
+          popupEdit
           onSave={(val) => saveField({ description: val || null })}
         />
       </td>
