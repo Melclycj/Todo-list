@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { format, parseISO } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { Task, TaskStatus } from '@/types/task'
@@ -7,7 +8,6 @@ import { TaskStatusBadge } from './TaskStatusBadge'
 import { TaskTopicSelector } from './TaskTopicSelector'
 import { useUpdateTaskStatus, useUpdateTask } from '@/hooks/useTasks'
 import { toast } from 'sonner'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 function nextStatus(current: TaskStatus): TaskStatus {
   if (current === 'in_progress') return 'done'
@@ -46,15 +46,28 @@ export function EditableCell({
 }: EditableCellProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(inputValue)
+  const spanRef = useRef<HTMLSpanElement>(null)
+  // Ref to the floating textarea so the mousedown-outside handler can read its value
+  const popupRef = useRef<HTMLTextAreaElement | null>(null)
+  const [floatStyle, setFloatStyle] = useState<React.CSSProperties>({})
 
-  function startEdit(e: React.MouseEvent) {
-    if (disabled) return
-    e.stopPropagation()
-    setDraft(inputValue)
-    setEditing(true)
-  }
+  // ── mousedown-outside closes popup ───────────────────────────────────────
+  // Using mousedown (not blur) so that horizontal scrolling the table never
+  // accidentally closes the editor — scroll events do not trigger mousedown.
+  useEffect(() => {
+    if (!editing || !popupEdit) return
+    function handleMouseDown(e: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        const val = popupRef.current.value
+        setEditing(false)
+        if (val !== inputValue) onSave(val)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [editing, popupEdit, inputValue, onSave])
 
-  function commit() {
+  function commitInline() {
     setEditing(false)
     if (draft !== inputValue) onSave(draft)
   }
@@ -64,15 +77,35 @@ export function EditableCell({
     setEditing(false)
   }
 
-  // Auto-resize textarea to fit content height.
   function autoResize(el: HTMLTextAreaElement | null) {
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
   }
 
+  function startEdit(e: React.MouseEvent) {
+    if (disabled) return
+    e.stopPropagation()
+    setDraft(inputValue)
+
+    if (popupEdit && spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect()
+      const vw = window.innerWidth
+      // Width = same as the description column, capped at 90vw
+      const width = Math.min(rect.width, vw * 0.9)
+      // Right-align to the screen's right edge. The left edge is
+      // (vw - width) from the left, so the right edge always touches the
+      // right side of the viewport. The popup never overflows off-screen.
+      const left = vw - width
+      setFloatStyle({ position: 'fixed', top: rect.top, left, width })
+    }
+
+    setEditing(true)
+  }
+
   const displaySpan = (
     <span
+      ref={spanRef}
       onClick={startEdit}
       className={cn(
         'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm leading-5 whitespace-pre-wrap',
@@ -87,42 +120,28 @@ export function EditableCell({
   )
 
   // ── Popup mode ────────────────────────────────────────────────────────────
+  // Portal renders outside the table so overflow:auto never clips it.
+  // position:fixed keeps it in viewport space regardless of scroll.
+  // Right edge = viewport right edge. mousedown-outside saves; Escape cancels.
   if (popupEdit) {
     return (
-      <Popover
-        open={editing}
-        onOpenChange={(open) => {
-          if (!open) commit()   // click-outside or focus-leave → save
-        }}
-      >
-        <PopoverTrigger asChild>{displaySpan}</PopoverTrigger>
-        <PopoverContent
-          // style() keeps it below Tailwind purge and allows calc()
-          style={{ width: 'min(500px, 90vw)' }}
-          className="p-2"
-          align="start"
-          // Escape key: cancel (not commit) and prevent Radix from closing
-          // via the default handler (which would trigger onOpenChange → commit).
-          onEscapeKeyDown={(e) => { e.preventDefault(); cancel() }}
-          // Suppress auto-focus on the PopoverContent wrapper so our textarea
-          // autoFocus works without fighting Radix.
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onClick={(e) => e.stopPropagation()}
-        >
+      <>
+        {displaySpan}
+        {editing && createPortal(
           <textarea
-            ref={autoResize}
+            ref={(el) => { popupRef.current = el; autoResize(el) }}
             value={draft}
             autoFocus
-            rows={4}
+            rows={1}
             onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
-            onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); cancel() } }}
-            className="w-full bg-background text-sm focus:outline-none resize-none overflow-hidden leading-5 px-0.5 py-0"
-          />
-          <p className="text-[10px] text-muted-foreground/60 mt-1 select-none">
-            Click outside to save · Esc to cancel
-          </p>
-        </PopoverContent>
-      </Popover>
+            onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
+            onClick={(e) => e.stopPropagation()}
+            style={{ ...floatStyle, zIndex: 9999 }}
+            className="bg-background border border-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5 shadow-md"
+          />,
+          document.body
+        )}
+      </>
     )
   }
 
@@ -135,10 +154,8 @@ export function EditableCell({
         autoFocus
         rows={1}
         onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') cancel()
-        }}
+        onBlur={commitInline}
+        onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
         onClick={(e) => e.stopPropagation()}
         className="w-full bg-background ring-1 ring-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5"
       />
@@ -153,10 +170,10 @@ export function EditableCell({
         value={draft}
         autoFocus
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
+        onBlur={commitInline}
         onKeyDown={(e) => {
           if (e.key === 'Escape') cancel()
-          if (e.key === 'Enter') { e.preventDefault(); commit() }
+          if (e.key === 'Enter') { e.preventDefault(); commitInline() }
         }}
         onClick={(e) => e.stopPropagation()}
         className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none"
