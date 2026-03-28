@@ -47,8 +47,8 @@ export function EditableCell({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(inputValue)
   const spanRef = useRef<HTMLSpanElement>(null)
-  // Ref to the floating textarea so the mousedown-outside handler can read its value
-  const popupRef = useRef<HTMLTextAreaElement | null>(null)
+  // Ref to the floating editor so the mousedown-outside handler can read its value
+  const popupRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
   const [floatStyle, setFloatStyle] = useState<React.CSSProperties>({})
 
   // ── mousedown-outside closes popup ───────────────────────────────────────
@@ -122,23 +122,47 @@ export function EditableCell({
   // ── Popup mode ────────────────────────────────────────────────────────────
   // Portal renders outside the table so overflow:auto never clips it.
   // position:fixed keeps it in viewport space regardless of scroll.
-  // Right edge = viewport right edge. mousedown-outside saves; Escape cancels.
+  // Anchored to cell when visible, flush to viewport right edge otherwise.
+  // mousedown-outside saves; Escape cancels.
   if (popupEdit) {
+    const useTextarea = inputType === 'text' && multiline
+
     return (
       <>
         {displaySpan}
         {editing && createPortal(
-          <textarea
-            ref={(el) => { popupRef.current = el; autoResize(el) }}
-            value={draft}
-            autoFocus
-            rows={1}
-            onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
-            onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
-            onClick={(e) => e.stopPropagation()}
-            style={{ ...floatStyle, zIndex: 9999 }}
-            className="bg-background border border-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5 shadow-md"
-          />,
+          useTextarea ? (
+            <textarea
+              ref={(el) => { popupRef.current = el; autoResize(el) }}
+              value={draft}
+              autoFocus
+              rows={1}
+              onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
+              onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...floatStyle, zIndex: 9999 }}
+              className="bg-background border border-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5 shadow-md"
+            />
+          ) : (
+            <input
+              ref={(el) => { popupRef.current = el }}
+              type={inputType}
+              value={draft}
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancel()
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  setEditing(false)
+                  if (draft !== inputValue) onSave(draft)
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...floatStyle, zIndex: 9999 }}
+              className="bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none shadow-md"
+            />
+          ),
           document.body
         )}
       </>
@@ -259,6 +283,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
             inputValue={task.title}
             displayText={task.title}
             placeholder="Task title"
+            popupEdit
             onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
             textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
           />
@@ -272,6 +297,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           displayText={dueDateDisplay}
           placeholder="No date"
           inputType="date"
+          popupEdit
           onSave={(val) => saveField({ due_date: val ? `${val}T00:00:00` : null })}
         />
       </td>
@@ -288,6 +314,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           displayText={task.description ?? ''}
           placeholder="No description"
           popupEdit
+          multiline
           onSave={(val) => saveField({ description: val || null })}
         />
       </td>

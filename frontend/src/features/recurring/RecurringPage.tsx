@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { MouseEvent } from 'react'
 import { Plus, Repeat2, Check, Trash2, Pencil } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
@@ -56,47 +57,81 @@ interface EditableSelectCellProps {
 function EditableSelectCell({ value, onSave, disabled }: EditableSelectCellProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
+  const spanRef = useRef<HTMLSpanElement>(null)
+  const selectRef = useRef<HTMLSelectElement | null>(null)
+  const [floatStyle, setFloatStyle] = useState<React.CSSProperties>({})
+
+  // mousedown-outside closes popup
+  useEffect(() => {
+    if (!editing) return
+    function handleMouseDown(e: globalThis.MouseEvent) {
+      if (selectRef.current && !selectRef.current.contains(e.target as Node)) {
+        const val = selectRef.current.value as RecurringFrequency
+        setEditing(false)
+        if (val !== value) onSave(val)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [editing, value, onSave])
 
   function startEdit(e: React.MouseEvent) {
     if (disabled) return
     e.stopPropagation()
     setDraft(value)
+
+    if (spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect()
+      const vw = window.innerWidth
+      const width = Math.min(rect.width, vw * 0.9)
+      const isRightEdgeVisible = rect.right <= vw
+      const left = isRightEdgeVisible ? rect.left : vw - width
+      setFloatStyle({ position: 'fixed', top: rect.top, left, width })
+    }
+
     setEditing(true)
   }
 
-  function commit() {
+  function cancel() {
+    setDraft(value)
     setEditing(false)
-    if (draft !== value) onSave(draft)
-  }
-
-  if (editing) {
-    return (
-      <select
-        value={draft}
-        autoFocus
-        onChange={(e) => setDraft(e.target.value as RecurringFrequency)}
-        onBlur={commit}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none"
-      >
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="fortnightly">Fortnightly</option>
-        <option value="monthly">Monthly</option>
-      </select>
-    )
   }
 
   return (
-    <span
-      onClick={startEdit}
-      className={cn(
-        'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm text-muted-foreground whitespace-nowrap',
-        disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40'
+    <>
+      <span
+        ref={spanRef}
+        onClick={startEdit}
+        className={cn(
+          'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm text-muted-foreground whitespace-nowrap',
+          disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40'
+        )}
+      >
+        {FREQ_LABELS[value]}
+      </span>
+      {editing && createPortal(
+        <select
+          ref={selectRef}
+          value={draft}
+          autoFocus
+          onChange={(e) => {
+            const val = e.target.value as RecurringFrequency
+            setEditing(false)
+            if (val !== value) onSave(val)
+          }}
+          onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
+          onClick={(e) => e.stopPropagation()}
+          style={{ ...floatStyle, zIndex: 9999 }}
+          className="bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none shadow-md"
+        >
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="monthly">Monthly</option>
+        </select>,
+        document.body
       )}
-    >
-      {FREQ_LABELS[value]}
-    </span>
+    </>
   )
 }
 
@@ -301,6 +336,7 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
           inputValue={template.title}
           displayText={template.title}
           placeholder="Template title"
+          popupEdit
           onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
           disabled={isInactive}
         />
@@ -322,6 +358,7 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
           displayText={formatNextDue(template)}
           placeholder="—"
           inputType="date"
+          popupEdit
           onSave={(val) => { if (val) saveField({ next_run_at: `${val}T00:00:00` }) }}
           disabled={isInactive}
           textClassName="text-muted-foreground whitespace-nowrap"
@@ -340,6 +377,7 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
           displayText={template.description ?? ''}
           placeholder="No description"
           popupEdit
+          multiline
           onSave={(val) => saveField({ description: val || null })}
           disabled={isInactive}
           textClassName="text-muted-foreground"
