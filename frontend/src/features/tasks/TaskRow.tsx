@@ -93,10 +93,10 @@ export function EditableCell({
       const vw = window.innerWidth
       // Width = same as the description column, capped at 90vw
       const width = Math.min(rect.width, vw * 0.9)
-      // Right-align to the screen's right edge. The left edge is
-      // (vw - width) from the left, so the right edge always touches the
-      // right side of the viewport. The popup never overflows off-screen.
-      const left = vw - width
+      // If the column's right edge is off-screen, flush the popup to the
+      // viewport's right edge. Otherwise anchor it to the cell's position.
+      const isRightEdgeVisible = rect.right <= vw
+      const left = isRightEdgeVisible ? rect.left : vw - width
       setFloatStyle({ position: 'fixed', top: rect.top, left, width })
     }
 
