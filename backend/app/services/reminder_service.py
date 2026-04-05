@@ -119,11 +119,11 @@ class ReminderService:
     """
     Reminder service. Computes the current reminder message for a user.
 
-    Depends on a task repository to count today's tasks and their completion.
+    Depends on a unit of work to count today's tasks and their completion.
     """
 
-    def __init__(self, task_repo) -> None:
-        self._task_repo = task_repo
+    def __init__(self, uow) -> None:
+        self._uow = uow
 
     async def get_reminder_message(
         self, user_id, now: datetime | None = None
@@ -140,12 +140,12 @@ class ReminderService:
 
         window_start, window_end = get_day_window(now)
 
-        total_today = await self._task_repo.count_tasks_in_window(
+        total_today = await self._uow.tasks.count_tasks_in_window(
             user_id=user_id,
             window_start=window_start,
             window_end=window_end,
         )
-        done_today = await self._task_repo.count_done_tasks_in_window(
+        done_today = await self._uow.tasks.count_done_tasks_in_window(
             user_id=user_id,
             window_start=window_start,
             window_end=window_end,

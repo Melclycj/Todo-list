@@ -39,7 +39,13 @@ def _make_service(
     mock_repo.get_by_id.return_value = existing_topic
     mock_repo.create.return_value = existing_topic or _make_topic()
     mock_repo.update.return_value = existing_topic or _make_topic()
-    service = TopicService(topic_repo=mock_repo)
+
+    mock_uow = AsyncMock()
+    mock_uow.topics = mock_repo
+    mock_uow.commit = AsyncMock()
+    mock_uow.rollback = AsyncMock()
+
+    service = TopicService(uow=mock_uow)
     return service, mock_repo
 
 

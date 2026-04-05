@@ -42,6 +42,7 @@ export function TaskRowExpanded({ task, onClose }: TaskRowExpandedProps) {
         onCancel={onClose}
         isPending={isPending}
         submitLabel="Save changes"
+        readonlyTitle={!!task.recurring_template_id}
       />
     </div>
   )

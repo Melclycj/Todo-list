@@ -16,25 +16,23 @@ export function TopicListPage() {
   const topic = topics.find((t) => t.id === id)
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">
-          {topic?.name ?? 'Topic'}
-        </h1>
-        <Button size="sm" onClick={() => setDrawerOpen(true)}>
-          <Plus size={14} />
-          New Task
-        </Button>
+    <div className="flex flex-col h-full">
+      {/* Page header — matches TaskListPage topbar */}
+      <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-border">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">{topic?.name ?? 'Topic'}</h1>
+          <Button size="sm" onClick={() => setDrawerOpen(true)}>
+            <Plus size={14} />
+            New Task
+          </Button>
+        </div>
       </div>
 
-      <TaskList
-        tasks={tasks}
-        isLoading={isLoading}
-        isTopicView
-        onCreateTask={() => setDrawerOpen(true)}
-      />
+      <div className="flex-1 overflow-hidden p-4">
+        <TaskList tasks={tasks} isLoading={isLoading} isTopicView onCreateTask={() => setDrawerOpen(true)} />
+      </div>
 
       <TaskCreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </>
+    </div>
   )
 }

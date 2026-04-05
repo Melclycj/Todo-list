@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { Plus, Repeat2, Pencil, Square } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import type { MouseEvent } from 'react'
+import { Plus, Repeat2, Check, Trash2, Pencil } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { TaskEmptyState } from '@/features/tasks/TaskEmptyState'
@@ -12,15 +14,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import {
   useRecurringTemplates,
   useStopRecurringTemplate,
   useUpdateRecurringTemplate,
 } from '@/hooks/useRecurring'
-import type { RecurringTemplate } from '@/types/recurring'
-import type { RecurringFrequency } from '@/types/recurring'
+import { useTopics } from '@/hooks/useTopics'
+import { useRecurringColumnResize } from '@/hooks/useRecurringColumnResize'
+import type { RecurringColumnKey } from '@/hooks/useRecurringColumnResize'
+import { EditableCell } from '@/features/tasks/TaskRow'
+import type { RecurringTemplate, RecurringFrequency, RecurringUpdatePayload } from '@/types/recurring'
 import { toast } from 'sonner'
 
 const FREQ_LABELS: Record<RecurringFrequency, string> = {
@@ -30,7 +35,8 @@ const FREQ_LABELS: Record<RecurringFrequency, string> = {
   monthly: 'Monthly',
 }
 
-function formatNextDue(template: RecurringTemplate): string {
+export function formatNextDue(template: RecurringTemplate): string {
+  if (!template.is_active) return 'Stopped'
   try {
     return format(parseISO(template.next_run_at), 'MMM d, yyyy')
   } catch {
@@ -38,164 +44,429 @@ function formatNextDue(template: RecurringTemplate): string {
   }
 }
 
-function TemplateRow({ template }: { template: RecurringTemplate }) {
-  const { mutate: stop, isPending } = useStopRecurringTemplate()
-  const [confirmStop, setConfirmStop] = useState(false)
+// ---------------------------------------------------------------------------
+// Inline select cell for frequency
+// ---------------------------------------------------------------------------
+
+interface EditableSelectCellProps {
+  value: RecurringFrequency
+  onSave: (value: RecurringFrequency) => void
+  disabled?: boolean
+}
+
+function EditableSelectCell({ value, onSave, disabled }: EditableSelectCellProps) {
   const [editing, setEditing] = useState(false)
-  const { mutate: update, isPending: isUpdating } = useUpdateRecurringTemplate()
+  const [draft, setDraft] = useState(value)
+  const spanRef = useRef<HTMLSpanElement>(null)
+  const selectRef = useRef<HTMLSelectElement | null>(null)
+  const [floatStyle, setFloatStyle] = useState<React.CSSProperties>({})
 
-  const [editTitle, setEditTitle] = useState(template.title)
-  const [editFreq, setEditFreq] = useState<RecurringFrequency>(template.frequency)
-  const [editNextRunAt, setEditNextRunAt] = useState<string>(
-    template.next_run_at ? template.next_run_at.slice(0, 10) : ''
-  )
+  // mousedown-outside closes popup
+  useEffect(() => {
+    if (!editing) return
+    function handleMouseDown(e: globalThis.MouseEvent) {
+      if (selectRef.current && !selectRef.current.contains(e.target as Node)) {
+        const val = selectRef.current.value as RecurringFrequency
+        setEditing(false)
+        if (val !== value) onSave(val)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [editing, value, onSave])
 
-  function handleStop() {
-    stop(template.id, {
-      onSuccess: () => { toast.success('Recurring task stopped'); setConfirmStop(false) },
-      onError: () => toast.error('Failed to stop'),
-    })
+  function startEdit(e: React.MouseEvent) {
+    if (disabled) return
+    e.stopPropagation()
+    setDraft(value)
+
+    if (spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect()
+      const vw = window.innerWidth
+      const width = Math.min(rect.width, vw * 0.9)
+      const isRightEdgeVisible = rect.right <= vw
+      const left = isRightEdgeVisible ? rect.left : vw - width
+      setFloatStyle({ position: 'fixed', top: rect.top, left, width })
+    }
+
+    setEditing(true)
   }
 
-  function handleUpdate(e: React.FormEvent) {
-    e.preventDefault()
-    const payload: Parameters<typeof update>[0]['payload'] = {
-      title: editTitle,
-      frequency: editFreq,
-    }
-    if (editNextRunAt) {
-      payload.next_run_at = `${editNextRunAt}T00:00:00`
-    }
-    update(
-      { id: template.id, payload },
-      {
-        onSuccess: () => { toast.success('Updated'); setEditing(false) },
-        onError: () => toast.error('Failed to update'),
-      }
-    )
+  function cancel() {
+    setDraft(value)
+    setEditing(false)
   }
 
   return (
     <>
-      <tr className={`group border-b border-border hover:bg-muted/30 ${!template.is_active ? 'opacity-50' : ''}`}>
-        {/* Status — recurring icon */}
-        <td className="px-4 py-3 w-16 text-center">
-          <Repeat2 size={14} className="inline text-muted-foreground" aria-label="Recurring" />
-        </td>
-
-        {/* Title */}
-        <td className="px-4 py-3 text-sm font-medium truncate max-w-[200px]">
-          {template.title}
-        </td>
-
-        {/* Frequency */}
-        <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-          {FREQ_LABELS[template.frequency]}
-        </td>
-
-        {/* Next Due */}
-        <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-          {template.is_active ? `Next due: ${formatNextDue(template)}` : 'Stopped'}
-        </td>
-
-        {/* Description */}
-        <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[200px]">
-          {template.description ?? '—'}
-        </td>
-
-        {/* Actions */}
-        <td className="px-4 py-3 w-20">
-          {template.is_active && (
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={() => setEditing(true)}
-                className="p-1 rounded hover:bg-border text-muted-foreground"
-                aria-label="Edit"
-              >
-                <Pencil size={13} />
-              </button>
-              <button
-                onClick={() => setConfirmStop(true)}
-                className="p-1 rounded hover:bg-border text-muted-foreground"
-                aria-label="Stop"
-              >
-                <Square size={13} />
-              </button>
-            </div>
-          )}
-        </td>
-      </tr>
-
-      {/* Stop confirmation */}
-      <Dialog open={confirmStop} onOpenChange={setConfirmStop}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Stop recurring task?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            No new instances will be created. Existing tasks are unaffected.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setConfirmStop(false)}>Cancel</Button>
-            <Button variant="destructive" size="sm" onClick={handleStop} disabled={isPending}>
-              {isPending ? 'Stopping…' : 'Stop'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit dialog */}
-      <Dialog open={editing} onOpenChange={setEditing}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Edit recurring task</DialogTitle></DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Title</Label>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Frequency</Label>
-              <select
-                value={editFreq}
-                onChange={(e) => setEditFreq(e.target.value as RecurringFrequency)}
-                className="block w-full text-sm rounded-md border border-input bg-background px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="fortnightly">Fortnightly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Next due date</Label>
-              <Input
-                type="date"
-                value={editNextRunAt}
-                onChange={(e) => setEditNextRunAt(e.target.value)}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
-              <Button type="submit" size="sm" disabled={isUpdating}>Save</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <span
+        ref={spanRef}
+        onClick={startEdit}
+        className={cn(
+          'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm text-muted-foreground whitespace-nowrap',
+          disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40'
+        )}
+      >
+        {FREQ_LABELS[value]}
+      </span>
+      {editing && createPortal(
+        <select
+          ref={selectRef}
+          value={draft}
+          autoFocus
+          onChange={(e) => {
+            const val = e.target.value as RecurringFrequency
+            setEditing(false)
+            if (val !== value) onSave(val)
+          }}
+          onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
+          onClick={(e) => e.stopPropagation()}
+          style={{ ...floatStyle, zIndex: 9999 }}
+          className="bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none shadow-md"
+        >
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="monthly">Monthly</option>
+        </select>,
+        document.body
+      )}
     </>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Inline topic selector for recurring templates
+// ---------------------------------------------------------------------------
+
+interface RecurringTopicSelectorProps {
+  template: RecurringTemplate
+  disabled?: boolean
+}
+
+function RecurringTopicSelector({ template, disabled }: RecurringTopicSelectorProps) {
+  const [open, setOpen] = useState(false)
+  const [pendingIds, setPendingIds] = useState<Set<string>>(
+    () => new Set(template.topics.map((t) => t.id))
+  )
+  const { data: allTopics = [] } = useTopics()
+  const { mutate: update } = useUpdateRecurringTemplate()
+
+  useEffect(() => {
+    if (!open) {
+      setPendingIds(new Set(template.topics.map((t) => t.id)))
+    }
+  }, [template.topics, open])
+
+  function handleToggle(topicId: string) {
+    setPendingIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(topicId)) next.delete(topicId)
+      else next.add(topicId)
+      return next
+    })
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (disabled) return
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      const originalIds = new Set(template.topics.map((t) => t.id))
+      const changed =
+        pendingIds.size !== originalIds.size ||
+        [...pendingIds].some((id) => !originalIds.has(id))
+      if (changed) {
+        update(
+          { id: template.id, payload: { topic_ids: [...pendingIds] } },
+          { onError: () => toast.error('Failed to update topics') }
+        )
+      }
+    }
+  }
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <div
+          onClick={(e) => { if (!disabled) e.stopPropagation() }}
+          className={cn(
+            'min-h-[1.25rem] rounded px-0.5 -mx-0.5',
+            disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-accent/40'
+          )}
+        >
+          {template.topics.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {template.topics.map((topic) => (
+                <span
+                  key={topic.id}
+                  className="px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground border border-border"
+                >
+                  {topic.name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-muted-foreground/40 italic text-xs">
+              {disabled ? '—' : 'Add topics'}
+            </span>
+          )}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-52 p-2"
+        align="start"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {allTopics.length === 0 ? (
+          <p className="text-xs text-muted-foreground px-1">No topics created yet</p>
+        ) : (
+          <ul className="space-y-0.5">
+            {allTopics.map((topic) => (
+              <li key={topic.id}>
+                <label className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={pendingIds.has(topic.id)}
+                    onChange={() => handleToggle(topic.id)}
+                    className="accent-primary h-3.5 w-3.5"
+                  />
+                  <span className="truncate">{topic.name}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Table header with drag handles
+// ---------------------------------------------------------------------------
+
+const COLUMNS: { key: RecurringColumnKey; label: string }[] = [
+  { key: 'status', label: 'Status' },
+  { key: 'title', label: 'Title' },
+  { key: 'frequency', label: 'Frequency' },
+  { key: 'nextDue', label: 'Next Due' },
+  { key: 'topics', label: 'Topics' },
+  { key: 'description', label: 'Description' },
+]
+
+interface RecurringTableHeaderProps {
+  widths: Record<RecurringColumnKey, number>
+  onStartDrag: (column: RecurringColumnKey, e: MouseEvent) => void
+  isEditMode: boolean
+}
+
+function RecurringTableHeader({ widths, onStartDrag, isEditMode }: RecurringTableHeaderProps) {
+  return (
+    <thead className="sticky top-0 z-10 bg-muted">
+      <tr>
+        {isEditMode && <th className="w-10 border-b border-border" />}
+        {COLUMNS.map((col) => (
+          <th
+            key={col.key}
+            style={{ width: widths[col.key], minWidth: widths[col.key] }}
+            className="relative text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2 border-b border-border select-none"
+          >
+            {col.label}
+            <div
+              className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-border hover:bg-primary transition-colors"
+              onMouseDown={(e) => onStartDrag(col.key, e)}
+            />
+          </th>
+        ))}
+      </tr>
+    </thead>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Template row
+// ---------------------------------------------------------------------------
+
+const CHECKBOX_COLUMN_WIDTH = 40
+
+interface TemplateRowProps {
+  template: RecurringTemplate
+  widths: Record<RecurringColumnKey, number>
+  isEditMode: boolean
+  isSelected: boolean
+  onToggleSelect: (id: string) => void
+}
+
+function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect }: TemplateRowProps) {
+  const { mutate: update } = useUpdateRecurringTemplate()
+  const isInactive = !template.is_active
+
+  function saveField(payload: RecurringUpdatePayload) {
+    update(
+      { id: template.id, payload },
+      { onError: () => toast.error('Failed to update') }
+    )
+  }
+
+  const nextRunInput = template.next_run_at ? template.next_run_at.slice(0, 10) : ''
+
+  return (
+    <tr className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isInactive && 'opacity-50')}>
+      {/* Checkbox (edit mode only) */}
+      {isEditMode && (
+        <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(template.id)}
+            disabled={isInactive}
+            className="accent-primary h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
+          />
+        </td>
+      )}
+
+      {/* Status — recurring icon */}
+      <td style={{ width: widths.status }} className="px-3 py-2 text-center">
+        <Repeat2 size={14} className="inline text-muted-foreground" aria-label="Recurring" />
+      </td>
+
+      {/* Title */}
+      <td style={{ width: widths.title }} className="px-3 py-2">
+        <EditableCell
+          inputValue={template.title}
+          displayText={template.title}
+          placeholder="Template title"
+          popupEdit
+          onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
+          disabled={isInactive}
+        />
+      </td>
+
+      {/* Frequency */}
+      <td style={{ width: widths.frequency }} className="px-3 py-2">
+        <EditableSelectCell
+          value={template.frequency}
+          onSave={(val) => saveField({ frequency: val })}
+          disabled={isInactive}
+        />
+      </td>
+
+      {/* Next Due */}
+      <td style={{ width: widths.nextDue }} className="px-3 py-2">
+        <EditableCell
+          inputValue={nextRunInput}
+          displayText={formatNextDue(template)}
+          placeholder="—"
+          inputType="date"
+          popupEdit
+          onSave={(val) => { if (val) saveField({ next_run_at: `${val}T00:00:00` }) }}
+          disabled={isInactive}
+          textClassName="text-muted-foreground whitespace-nowrap"
+        />
+      </td>
+
+      {/* Topics */}
+      <td style={{ width: widths.topics }} className="px-3 py-2">
+        <RecurringTopicSelector template={template} disabled={isInactive} />
+      </td>
+
+      {/* Description */}
+      <td style={{ width: widths.description }} className="px-3 py-2">
+        <EditableCell
+          inputValue={template.description ?? ''}
+          displayText={template.description ?? ''}
+          placeholder="No description"
+          popupEdit
+          multiline
+          onSave={(val) => saveField({ description: val || null })}
+          disabled={isInactive}
+          textClassName="text-muted-foreground"
+        />
+      </td>
+    </tr>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export function RecurringPage() {
   const { data: templates = [], isLoading } = useRecurringTemplates()
   const [createOpen, setCreateOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmStop, setConfirmStop] = useState(false)
+  const { mutate: stop, isPending: isStopping } = useStopRecurringTemplate()
+  const { widths, startColumnDrag } = useRecurringColumnResize()
+
+  const totalWidth =
+    Object.values(widths).reduce((sum, w) => sum + w, 0) +
+    (isEditMode ? CHECKBOX_COLUMN_WIDTH : 0)
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function exitEditMode() {
+    setIsEditMode(false)
+    setSelectedIds(new Set())
+  }
+
+  function handleBulkStop() {
+    const ids = Array.from(selectedIds)
+    let remaining = ids.length
+    ids.forEach((id) => {
+      stop(id, {
+        onSuccess: () => {
+          remaining--
+          if (remaining === 0) {
+            toast.success(`${ids.length} template${ids.length !== 1 ? 's' : ''} stopped`)
+            setConfirmStop(false)
+            exitEditMode()
+          }
+        },
+        onError: () => toast.error('Failed to stop some templates'),
+      })
+    })
+  }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Page header — matches TaskListPage topbar */}
+      {/* Page header */}
       <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-border">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Recurring Tasks</h1>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus size={14} /> New Template
           </Button>
+          {/* Edit mode toolbar — mirrors TaskEditToolbar in Active Tasks */}
+          {!isEditMode ? (
+            <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} title="Select to stop">
+              <Pencil size={14} />
+            </Button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmStop(true)}
+                disabled={selectedIds.size === 0}
+                title="Stop selected"
+                className={cn(selectedIds.size === 0 && 'opacity-50 cursor-not-allowed')}
+              >
+                <Trash2 size={14} />
+              </Button>
+              <Button variant="outline" size="sm" onClick={exitEditMode} title="Done">
+                <Check size={14} />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -207,32 +478,61 @@ export function RecurringPage() {
         ) : templates.length === 0 ? (
           <TaskEmptyState isRecurring onCreateTask={() => setCreateOpen(true)} />
         ) : (
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-border bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-                  <th className="px-4 py-2 w-16 text-center">Status</th>
-                  <th className="px-4 py-2">Title</th>
-                  <th className="px-4 py-2 whitespace-nowrap">Frequency</th>
-                  <th className="px-4 py-2 whitespace-nowrap">Next Due</th>
-                  <th className="px-4 py-2">Description</th>
-                  <th className="px-4 py-2 w-20"></th>
-                </tr>
-              </thead>
+          <div className="border border-border rounded-lg overflow-auto h-full">
+            <table
+              className="border-collapse"
+              style={{ tableLayout: 'fixed', width: totalWidth, minWidth: totalWidth }}
+            >
+              <RecurringTableHeader
+                widths={widths}
+                onStartDrag={startColumnDrag}
+                isEditMode={isEditMode}
+              />
               <tbody>
-                {templates.map((t) => <TemplateRow key={t.id} template={t} />)}
+                {templates.map((t) => (
+                  <TemplateRow
+                    key={t.id}
+                    template={t}
+                    widths={widths}
+                    isEditMode={isEditMode}
+                    isSelected={selectedIds.has(t.id)}
+                    onToggleSelect={toggleSelect}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Create drawer — uses full TaskCreateDrawer with recurringOnly */}
+      {/* Create drawer */}
       <TaskCreateDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         recurringOnly
       />
+
+      {/* Bulk stop confirmation */}
+      <Dialog open={confirmStop} onOpenChange={setConfirmStop}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              Stop {selectedIds.size} recurring template{selectedIds.size !== 1 ? 's' : ''}?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            No new instances will be created. Existing tasks are unaffected.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmStop(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkStop} disabled={isStopping}>
+              {isStopping ? 'Stopping…' : 'Stop'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

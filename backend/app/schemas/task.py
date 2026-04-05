@@ -65,6 +65,7 @@ class TaskResponse(BaseModel):
     archived_at: datetime | None
     manual_order: int | None
     topics: list[TopicResponse]
+    recurring_template_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

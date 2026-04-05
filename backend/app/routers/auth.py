@@ -4,9 +4,8 @@ HTTP layer only: parse request, call service, return response.
 """
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 
-from app.database import get_db
+from app.database import get_uow
 from app.limiter import limiter, make_limit
-from app.repositories.user_repository import RefreshTokenRepository, UserRepository
 from app.schemas.common import ApiResponse
 from app.schemas.user import (
     TokenResponse,
@@ -15,12 +14,12 @@ from app.schemas.user import (
     UserResponse,
 )
 from app.services.auth_service import AuthService
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _get_auth_service(session: AsyncSession = Depends(get_db)) -> AuthService:
+def _get_auth_service(uow: UnitOfWork = Depends(get_uow)) -> AuthService:
     from passlib.context import CryptContext
 
     class PasswordHasher:
@@ -32,11 +31,7 @@ def _get_auth_service(session: AsyncSession = Depends(get_db)) -> AuthService:
         def verify(self, plain: str, hashed: str) -> bool:
             return self._ctx.verify(plain, hashed)
 
-    return AuthService(
-        user_repo=UserRepository(session),
-        token_repo=RefreshTokenRepository(session),
-        password_hasher=PasswordHasher(),
-    )
+    return AuthService(uow=uow, password_hasher=PasswordHasher())
 
 
 @router.post("/register", response_model=ApiResponse[UserResponse], status_code=201)

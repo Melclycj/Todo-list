@@ -11,20 +11,19 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user_id
-from app.database import get_db
-from app.repositories.task_repository import TaskRepository
+from app.database import get_uow
 from app.schemas.common import ApiResponse
 from app.services.reminder_service import ReminderService
 from app.sse.connection_manager import sse_manager
+from app.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/reminder", tags=["reminder"])
 
 
-def _get_reminder_service(session: AsyncSession = Depends(get_db)) -> ReminderService:
-    return ReminderService(task_repo=TaskRepository(session))
+def _get_reminder_service(uow: UnitOfWork = Depends(get_uow)) -> ReminderService:
+    return ReminderService(uow=uow)
 
 
 @router.get("", response_model=ApiResponse[str])

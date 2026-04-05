@@ -54,6 +54,15 @@ def _make_task(
     return task
 
 
+def _make_uow(task_repo: AsyncMock) -> AsyncMock:
+    """Build a mock UnitOfWork wrapping the given task repo mock."""
+    mock_uow = AsyncMock()
+    mock_uow.tasks = task_repo
+    mock_uow.commit = AsyncMock()
+    mock_uow.rollback = AsyncMock()
+    return mock_uow
+
+
 # ---------------------------------------------------------------------------
 # validate_status_transition
 # ---------------------------------------------------------------------------
@@ -185,17 +194,18 @@ class TestBuildInstanceTitle:
 
 
 # ---------------------------------------------------------------------------
-# TaskService (using mocked repository)
+# TaskService (using mocked UnitOfWork)
 # ---------------------------------------------------------------------------
 
 class TestTaskServiceUpdateStatus:
-    """Tests for TaskService.update_task_status with mocked repository."""
+    """Tests for TaskService.update_task_status with mocked UnitOfWork."""
 
     def _make_service(self, task: Task) -> tuple[TaskService, AsyncMock]:
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
         mock_repo.update.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
         return service, mock_repo
 
     @pytest.mark.asyncio
@@ -287,7 +297,8 @@ class TestTaskServiceUpdateStatus:
         """Raises LookupError when task doesn't exist."""
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = None
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(LookupError, match="Task not found"):
             await service.update_task_status(
@@ -336,13 +347,8 @@ class TestTaskServiceCreateTask:
 
     def _make_service(self) -> tuple[TaskService, AsyncMock]:
         mock_repo = AsyncMock()
-        mock_topic_repo = AsyncMock()
-        mock_topic_repo.get_by_ids_for_user.return_value = []
-        service = TaskService(
-            task_repo=mock_repo,
-            sse_manager=None,
-            topic_repo=mock_topic_repo,
-        )
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
         return service, mock_repo
 
     @pytest.mark.asyncio
@@ -412,7 +418,8 @@ class TestTaskServiceDeleteTask:
         task = _make_task()
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         await service.delete_task(task_id=task.id, user_id=task.user_id)
         mock_repo.delete.assert_called_once_with(task.id)
@@ -423,7 +430,8 @@ class TestTaskServiceDeleteTask:
         task = _make_task()
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(PermissionError, match="Not authorized"):
             await service.delete_task(task_id=task.id, user_id=uuid.uuid4())
@@ -434,7 +442,8 @@ class TestTaskServiceDeleteTask:
         """LookupError when task doesn't exist."""
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = None
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(LookupError, match="Task not found"):
             await service.delete_task(task_id=uuid.uuid4(), user_id=uuid.uuid4())
@@ -466,8 +475,9 @@ class TestTaskServiceArchiving:
         mock_repo = AsyncMock()
         mock_repo.get_unarchived_done_tasks.return_value = [task1, task2, task3]
         mock_repo.bulk_archive.return_value = None
+        mock_uow = _make_uow(mock_repo)
 
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        service = TaskService(uow=mock_uow, sse_manager=None)
         archived_count = await service.archive_done_tasks(today_4am=today_4am)
 
         assert archived_count == 2
@@ -481,7 +491,8 @@ class TestTaskServiceArchiving:
         """When there are no done tasks, nothing is archived."""
         mock_repo = AsyncMock()
         mock_repo.get_unarchived_done_tasks.return_value = []
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         count = await service.archive_done_tasks(
             today_4am=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc)
@@ -499,7 +510,8 @@ class TestTaskServiceGetTask:
         task = _make_task()
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         result = await service.get_task(task_id=task.id, user_id=task.user_id)
         assert result is task
@@ -508,7 +520,8 @@ class TestTaskServiceGetTask:
     async def test_get_task_not_found_raises(self):
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = None
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(LookupError, match="Task not found"):
             await service.get_task(task_id=uuid.uuid4(), user_id=uuid.uuid4())
@@ -518,7 +531,8 @@ class TestTaskServiceGetTask:
         task = _make_task()
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(PermissionError, match="Not authorized"):
             await service.get_task(task_id=task.id, user_id=uuid.uuid4())
@@ -532,7 +546,8 @@ class TestTaskServiceListTasks:
         """list_tasks passes all parameters through to the repository."""
         mock_repo = AsyncMock()
         mock_repo.list_active.return_value = ([], 0)
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         user_id = uuid.uuid4()
         now = datetime(2026, 2, 24, 10, 0, 0, tzinfo=timezone.utc)
@@ -555,7 +570,8 @@ class TestTaskServiceListTasks:
         """When now is not provided, the service uses the current UTC time."""
         mock_repo = AsyncMock()
         mock_repo.list_active.return_value = ([], 0)
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         await service.list_tasks(user_id=uuid.uuid4())
         call_kwargs = mock_repo.list_active.call_args[1]
@@ -574,7 +590,8 @@ class TestTaskServiceUpdateTask:
         mock_repo.get_by_id.return_value = task
         updated = _make_task(title="Updated", user_id=task.user_id)
         mock_repo.update.return_value = updated
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         result = await service.update_task(
             task_id=task.id, user_id=task.user_id, title="Updated"
@@ -585,7 +602,8 @@ class TestTaskServiceUpdateTask:
     async def test_update_task_not_found_raises(self):
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = None
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(LookupError, match="Task not found"):
             await service.update_task(
@@ -597,7 +615,8 @@ class TestTaskServiceUpdateTask:
         task = _make_task()
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(PermissionError, match="Not authorized"):
             await service.update_task(
@@ -616,7 +635,8 @@ class TestTaskServiceUpdateOrder:
         updated = _make_task(user_id=task.user_id)
         updated.manual_order = 5
         mock_repo.update.return_value = updated
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         result = await service.update_task_order(
             task_id=task.id, user_id=task.user_id, manual_order=5
@@ -627,7 +647,8 @@ class TestTaskServiceUpdateOrder:
     async def test_update_task_order_not_found_raises(self):
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = None
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(LookupError, match="Task not found"):
             await service.update_task_order(
@@ -639,7 +660,8 @@ class TestTaskServiceUpdateOrder:
         task = _make_task()
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(PermissionError, match="Not authorized"):
             await service.update_task_order(
@@ -662,7 +684,8 @@ class TestTaskServiceRestoreTask:
         mock_repo.get_by_id.return_value = task
         restored = _make_task(user_id=task.user_id, status=TaskStatus.TODO, archived=False)
         mock_repo.update.return_value = restored
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         result = await service.restore_task(task_id=task.id, user_id=task.user_id)
         call_kwargs = mock_repo.update.call_args[1]
@@ -676,7 +699,8 @@ class TestTaskServiceRestoreTask:
         task = _make_task(archived=False)
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(ValueError, match="Task is not archived"):
             await service.restore_task(task_id=task.id, user_id=task.user_id)
@@ -685,7 +709,8 @@ class TestTaskServiceRestoreTask:
     async def test_restore_task_not_found_raises(self):
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = None
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(LookupError, match="Task not found"):
             await service.restore_task(task_id=uuid.uuid4(), user_id=uuid.uuid4())
@@ -695,7 +720,8 @@ class TestTaskServiceRestoreTask:
         task = _make_task(archived=True, status=TaskStatus.DONE)
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
-        service = TaskService(task_repo=mock_repo, sse_manager=None)
+        mock_uow = _make_uow(mock_repo)
+        service = TaskService(uow=mock_uow, sse_manager=None)
 
         with pytest.raises(PermissionError, match="Not authorized"):
             await service.restore_task(task_id=task.id, user_id=uuid.uuid4())
@@ -711,9 +737,10 @@ class TestTaskServiceSseNotification:
         mock_repo = AsyncMock()
         mock_repo.get_by_id.return_value = task
         mock_repo.update.return_value = task
+        mock_uow = _make_uow(mock_repo)
 
         mock_sse = AsyncMock()
-        service = TaskService(task_repo=mock_repo, sse_manager=mock_sse)
+        service = TaskService(uow=mock_uow, sse_manager=mock_sse)
 
         await service.update_task_status(
             task_id=task.id,
@@ -726,6 +753,8 @@ class TestTaskServiceSseNotification:
     @pytest.mark.asyncio
     async def test_title_too_long_raises(self):
         """Title exceeding 255 chars raises ValueError."""
-        service = TaskService(task_repo=AsyncMock(), sse_manager=None)
+        mock_uow = AsyncMock()
+        mock_uow.commit = AsyncMock()
+        service = TaskService(uow=mock_uow, sse_manager=None)
         with pytest.raises(ValueError, match="Title must not exceed 255 characters"):
             await service.create_task(user_id=uuid.uuid4(), title="x" * 256)

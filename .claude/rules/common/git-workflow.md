@@ -10,7 +10,7 @@
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
-Note: Attribution disabled globally via ~/.claude/settings.json.
+Note: Co-authored-by attribution is enabled — Claude's authorship is included in commits.
 
 ## Pull Request Workflow
 

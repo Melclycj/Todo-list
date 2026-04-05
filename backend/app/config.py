@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     db_pool_timeout: int = 30
     db_pool_recycle: int = 1800
     scheduler_timezone: str = "UTC"
+    # Logging
+    log_level: str = "INFO"
+    log_file: str = ""  # e.g. "/var/log/app/api.json" — empty means stderr only
+    # Sentry
+    sentry_dsn: str = ""  # empty = disabled
+    sentry_traces_sample_rate: float = 0.2
+    environment: str = "production"
 
 
 settings = Settings()

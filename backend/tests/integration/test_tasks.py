@@ -51,9 +51,9 @@ class TestTaskCreate:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_task_unauthenticated_returns_403(self, client):
+    async def test_create_task_unauthenticated_returns_401(self, client):
         resp = await client.post("/api/v1/tasks", json={"title": "Task"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     @pytest.mark.asyncio
     async def test_create_task_with_description(self, client, auth_headers):
@@ -89,9 +89,9 @@ class TestTaskList:
         assert tasks[0]["title"] == "Walk the dog"
 
     @pytest.mark.asyncio
-    async def test_list_tasks_unauthenticated_returns_403(self, client):
+    async def test_list_tasks_unauthenticated_returns_401(self, client):
         resp = await client.get("/api/v1/tasks")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestTaskGet:
@@ -367,6 +367,90 @@ class TestTaskCreateWithTopics:
         assert task_resp.status_code == 201
         # The foreign topic must NOT appear in the result
         assert task_resp.json()["data"]["topics"] == []
+
+
+class TestRecurringTemplateId:
+    """
+    Verify that the task response exposes recurring_template_id when a task
+    was spawned by a recurring template, and null for regular tasks.
+    """
+
+    @pytest.mark.asyncio
+    async def test_regular_task_has_null_recurring_template_id(self, client, auth_headers):
+        """A manually created task must have recurring_template_id: null."""
+        resp = await client.post(
+            "/api/v1/tasks",
+            json={"title": "Plain task"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()["data"]
+        assert "recurring_template_id" in data
+        assert data["recurring_template_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_regular_task_recurring_template_id_null_in_list(self, client, auth_headers):
+        """The task list endpoint also exposes recurring_template_id: null for plain tasks."""
+        await client.post(
+            "/api/v1/tasks",
+            json={"title": "List plain task"},
+            headers=auth_headers,
+        )
+        resp = await client.get("/api/v1/tasks", headers=auth_headers)
+        assert resp.status_code == 200
+        tasks = resp.json()["data"]
+        assert len(tasks) == 1
+        assert "recurring_template_id" in tasks[0]
+        assert tasks[0]["recurring_template_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_recurring_spawned_task_has_template_id(self, client, auth_headers):
+        """A task spawned via a recurring template exposes recurring_template_id."""
+        # Create a recurring template — the service also creates the first instance/task
+        template_resp = await client.post(
+            "/api/v1/recurring",
+            json={"title": "Daily stand-up", "frequency": "daily"},
+            headers=auth_headers,
+        )
+        assert template_resp.status_code == 201
+        template_id = template_resp.json()["data"]["id"]
+
+        # The task list should contain the spawned task with the template id set
+        tasks_resp = await client.get("/api/v1/tasks", headers=auth_headers)
+        assert tasks_resp.status_code == 200
+        tasks = tasks_resp.json()["data"]
+        assert len(tasks) >= 1
+
+        spawned = next(
+            (t for t in tasks if t.get("recurring_template_id") == template_id),
+            None,
+        )
+        assert spawned is not None, (
+            f"No task with recurring_template_id={template_id} found in {tasks}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_single_recurring_task_exposes_template_id(self, client, auth_headers):
+        """GET /tasks/:id for a recurring task returns recurring_template_id."""
+        template_resp = await client.post(
+            "/api/v1/recurring",
+            json={"title": "Weekly review", "frequency": "weekly"},
+            headers=auth_headers,
+        )
+        assert template_resp.status_code == 201
+        template_id = template_resp.json()["data"]["id"]
+
+        tasks_resp = await client.get("/api/v1/tasks", headers=auth_headers)
+        tasks = tasks_resp.json()["data"]
+        spawned = next(
+            (t for t in tasks if t.get("recurring_template_id") == template_id),
+            None,
+        )
+        assert spawned is not None
+
+        get_resp = await client.get(f"/api/v1/tasks/{spawned['id']}", headers=auth_headers)
+        assert get_resp.status_code == 200
+        assert get_resp.json()["data"]["recurring_template_id"] == template_id
 
 
 class TestTaskCrossUserIsolation:

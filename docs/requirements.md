@@ -1,7 +1,7 @@
 # Todo List App — Requirements
 
 > **Status:** Draft — v0.3
-> **Last Updated:** 2026-02-24
+> **Last Updated:** 2026-04-04
 
 ---
 
@@ -30,12 +30,12 @@
 | Password | Yes | Minimum 8 characters |
 
 **Success Criteria:**
-- [ ] User can register with a valid email and password
-- [ ] System returns a clear error if the email is already in use
-- [ ] User can log in with valid credentials and receive an authenticated session
-- [ ] System returns a generic "invalid credentials" error on failed login (does not reveal which field is incorrect)
-- [ ] Authenticated session persists across page refreshes via a refresh token stored in an HTTP-only cookie
-- [ ] User can log out; the refresh token is immediately invalidated server-side
+- [x] User can register with a valid email and password
+- [x] System returns a clear error if the email is already in use
+- [x] User can log in with valid credentials and receive an authenticated session
+- [x] System returns a generic "invalid credentials" error on failed login (does not reveal which field is incorrect)
+- [x] Authenticated session persists across page refreshes via a refresh token stored in an HTTP-only cookie
+- [x] User can log out; the refresh token is immediately invalidated server-side
 
 ---
 
@@ -53,11 +53,11 @@
 | Result / outcome note | No | Only relevant when status is `Done` |
 
 **Success Criteria:**
-- [ ] User can create a task with at minimum a title
-- [ ] User can edit any field of an existing task
-- [ ] User can delete a task with a confirmation prompt
-- [ ] All changes persist after page refresh
-- [ ] User can view all tasks in a list view
+- [x] User can create a task with at minimum a title
+- [x] User can edit any field of an existing task
+- [x] User can delete a task with a confirmation prompt
+- [x] All changes persist after page refresh
+- [x] User can view all tasks in a list view
 
 ---
 
@@ -77,12 +77,12 @@ To Do → In Progress → Done
 - At 4am, all `Done` tasks from the previous day are moved to the Archive view automatically.
 
 **Success Criteria:**
-- [ ] User can transition a task through statuses: `To Do` → `In Progress` → `Done`
-- [ ] User can add an optional result note when marking a task as `Done`
-- [ ] A task marked `Done` within today's window remains visible in the active view
-- [ ] At 4am, tasks marked `Done` in the previous day's window are automatically moved to the Archive view
-- [ ] Archived tasks are visible in a dedicated Archive view
-- [ ] User can restore (reopen) an archived task; restored tasks return to `To Do` status
+- [x] User can transition a task through statuses: `To Do` → `In Progress` → `Done`
+- [x] User can add an optional result note when marking a task as `Done`
+- [x] A task marked `Done` within today's window remains visible in the active view
+- [x] At 4am, tasks marked `Done` in the previous day's window are automatically moved to the Archive view
+- [x] Archived tasks are visible in a dedicated Archive view
+- [x] User can restore (reopen) an archived task; restored tasks return to `To Do` status
 
 ---
 
@@ -98,11 +98,11 @@ To Do → In Progress → Done
 | All Tasks | No date filter applied |
 
 **Success Criteria:**
-- [ ] Filter controls are always visible and accessible from the sidebar
-- [ ] Applying a filter updates the task list immediately (no page reload)
-- [ ] Active filter state is visually indicated in the UI
-- [ ] Tasks with no due date appear only under the "All Tasks" filter
-- [ ] Tasks marked `Done` within today's window are included in time-based filter results
+- [x] Filter controls are always visible and accessible (via dropdown above task table)
+- [x] Applying a filter updates the task list immediately (no page reload)
+- [x] Active filter state is visually indicated in the UI
+- [x] Tasks with no due date appear only under the "All Tasks" filter
+- [x] Tasks marked `Done` within today's window are included in time-based filter results
 
 ---
 
@@ -110,12 +110,12 @@ To Do → In Progress → Done
 **Description:** Users can create and manage topics (categories/labels) and assign tasks to them. Topics are used for grouping and navigating tasks.
 
 **Success Criteria:**
-- [ ] User can create, rename, and delete topics
-- [ ] User can assign one or more topics to a task at creation or any time after
-- [ ] Sidebar lists all topics; clicking a topic filters the task list to that topic
-- [ ] Deleting a topic does not delete associated tasks; the topic tag is removed from affected tasks
-- [ ] Topic filter can be combined with a time-window filter (FR-03)
-- [ ] Tasks marked `Done` today that belong to a topic are shown when that topic is selected
+- [x] User can create, rename, and delete topics
+- [x] User can assign one or more topics to a task at creation or any time after
+- [x] Sidebar lists all topics; clicking a topic filters the task list to that topic
+- [x] Deleting a topic does not delete associated tasks; the topic tag is removed from affected tasks
+- [x] Topic filter can be combined with a time-window filter (FR-03)
+- [x] Tasks marked `Done` today that belong to a topic are shown when that topic is selected
 
 ---
 
@@ -127,17 +127,16 @@ To Do → In Progress → Done
 |---------|------|-------------|
 | Reminder banner | Persistent UI element | Dynamic message — see FR-07 |
 | Active Tasks | Navigation | Default view — all active tasks |
-| Filters | Navigation group | Today / Within 3 Days / Within a Week / All Tasks |
 | Topics | Navigation group | List of all user-created topics |
 | Recurring Tasks | Navigation | View and manage all recurring templates |
 | Archive | Navigation | View of all archived tasks |
 
 **Success Criteria:**
-- [ ] Sidebar is always visible on desktop viewports
-- [ ] Reminder banner is always pinned to the top of the sidebar
-- [ ] Current active view/section is visually highlighted
+- [x] Sidebar is always visible on desktop viewports
+- [x] Reminder banner is always pinned to the top of the sidebar
+- [x] Current active view/section is visually highlighted
 - [ ] Sidebar collapses or becomes a drawer on mobile / small screens
-- [ ] Navigating via sidebar does not require a full page reload
+- [x] Navigating via sidebar does not require a full page reload
 
 ---
 
@@ -152,13 +151,13 @@ To Do → In Progress → Done
 - When an instance is marked `Done`, it follows the standard archiving rule (FR-02).
 
 **Success Criteria:**
-- [ ] User can mark a task as recurring when creating it, selecting frequency: weekly, fortnightly, or monthly
-- [ ] The first instance is created immediately upon saving the recurring template
-- [ ] A new instance is created at 4am on the first day of each period, regardless of the previous instance's status
-- [ ] Each instance title has the original title with a date postfix
-- [ ] User can view all recurring templates in the sidebar Recurring Tasks section
-- [ ] User can change the frequency of a recurring template; the change applies from the next instance onward
-- [ ] User can permanently stop a recurring template; no new instances are created, existing instances are unaffected, and the template itself is not archived
+- [x] User can mark a task as recurring when creating it, selecting frequency: weekly, fortnightly, or monthly
+- [x] The first instance is created immediately upon saving the recurring template
+- [x] A new instance is created at 4am on the first day of each period, regardless of the previous instance's status
+- [x] Each instance title has the original title with a date postfix
+- [x] User can view all recurring templates in the sidebar Recurring Tasks section
+- [x] User can change the frequency of a recurring template; the change applies from the next instance onward
+- [x] User can permanently stop a recurring template; no new instances are created, existing instances are unaffected, and the template itself is not archived
 
 ---
 
@@ -177,10 +176,10 @@ To Do → In Progress → Done
 | Half or fewer of today's tasks are complete | Before 6pm | "Good day. Let's keep going!" |
 
 **Success Criteria:**
-- [ ] Reminder banner is displayed at all times at the top of the sidebar
-- [ ] Reminder message updates within 1 second of a task status change
-- [ ] Reminder message updates automatically at the 6pm and 1am time boundaries without a page refresh
-- [ ] All reminder messages use positive or neutral language
+- [x] Reminder banner is displayed at all times at the top of the sidebar
+- [x] Reminder message updates within 1 second of a task status change
+- [x] Reminder message updates automatically at the 6pm and 1am time boundaries without a page refresh
+- [x] All reminder messages use positive or neutral language
 
 ---
 
@@ -188,11 +187,11 @@ To Do → In Progress → Done
 **Description:** Tasks are sorted by ascending due date by default. Tasks due on the same day can be manually reordered via drag-and-drop. Tasks with no due date are listed separately.
 
 **Success Criteria:**
-- [ ] Tasks are displayed in ascending order by due date by default
+- [x] Tasks are displayed in ascending order by due date by default
 - [ ] User can drag and drop tasks with the same due date to reorder them within that group
 - [ ] Manual ordering persists after page refresh
-- [ ] System prompts the user if a drag-and-drop action would violate date-based ordering (e.g. dragging a task above one with an earlier due date)
-- [ ] Tasks with no due date are listed in a separate section below dated tasks
+- [ ] System prompts the user if a drag-and-drop action would violate date-based ordering
+- [x] Tasks with no due date are listed in a separate section below dated tasks
 
 ---
 
@@ -200,9 +199,86 @@ To Do → In Progress → Done
 **Description:** Users can search for tasks by title.
 
 **Success Criteria:**
-- [ ] System displays all tasks with titles matching the search query
-- [ ] Active filter (time window or topic) is applied to search results
-- [ ] System displays a "No results found" message when no tasks match
+- [x] System displays all tasks with titles matching the search query
+- [x] Active filter (time window or topic) is applied to search results
+- [x] System displays a "No results found" message when no tasks match
+
+---
+
+### FR-10: Google OpenID Login
+**Description:** Users can log in using their Google account via OpenID Connect, as an alternative to email/password authentication. On first login, a user account is automatically created and linked to the Google identity. Subsequent logins match by email.
+
+**Success Criteria:**
+- [ ] A "Sign in with Google" button is displayed on the login page
+- [ ] Clicking the button redirects to Google's OAuth consent screen
+- [ ] After Google authorization, the user is redirected back and authenticated with a valid session
+- [ ] On first Google login, a new user account is created using the Google profile email
+- [ ] If a user with the same email already exists (registered via email/password), the Google identity is linked to the existing account
+- [ ] Google-authenticated sessions use the same JWT/refresh token mechanism as email/password login
+- [ ] User can log out from a Google-authenticated session; the refresh token is invalidated
+- [ ] If Google authorization is denied or fails, the user is returned to the login page with an error message stating the reason (e.g. "Google login was cancelled" or "Authorization failed")
+- [ ] The Google OAuth client ID and secret are stored as environment variables, never in source code
+
+---
+
+### FR-11: Subtasks
+**Description:** Users can create subtasks under any task. A task with subtasks derives its status from subtask progress rather than being set directly. Subtasks are visible by expanding the parent task row.
+
+**Status display rules:**
+| Condition | Displayed Status |
+|-----------|-----------------|
+| 0 subtasks completed out of m | `Not Started` |
+| n subtasks completed out of m (0 < n < m) | `In Progress: n/m` |
+| All subtasks completed (n = m) | `Done` |
+
+**Expand/collapse rules:**
+- A dropdown indicator is shown before the status column for tasks that have subtasks
+- Clicking the task row expands it to reveal its subtask table
+- Only one task can be expanded at a time; expanding another collapses the currently expanded one
+- Subtasks are displayed as rows in the same table format (same columns and column widths), grouped as a sub-table with a visual gap separating it from the main task list
+- Expanding works in all views: active task list, topic groups, and archive
+
+**Subtask behavior:**
+- A subtask is always associated with its parent task and cannot exist independently
+- Each subtask has its own status (To Do / In Progress / Done)
+- A completed subtask is never moved to the archive view or separated into its own group — it stays with its parent
+- Subtasks follow the same CRUD rules as tasks (create, edit, delete) but scoped to the parent
+
+**Success Criteria:**
+- [ ] User can create a subtask under any existing task
+- [ ] A task with subtasks displays a dropdown indicator before the status column
+- [ ] Task status displays `Not Started`, `In Progress: n/m`, or `Done` based on subtask completion
+- [ ] Clicking a task row with subtasks expands it to show the subtask table
+- [ ] Subtask rows use the same columns and column widths as the main task table
+- [ ] The subtask table is visually separated from adjacent task rows (distinct border or spacing)
+- [ ] Only one task can be expanded at a time; expanding another collapses the previous
+- [ ] Completed subtasks remain with their parent — they are never archived separately
+- [ ] Subtasks are visible when expanding a task in any view (active, topic, archive)
+- [ ] Deleting a parent task deletes all its subtasks
+- [ ] User can edit and delete individual subtasks
+
+---
+
+### FR-12: Row Context Menu
+**Description:** Each task row has a context menu (triggered by a "more options" icon at the start of the row) that provides quick actions. Currently supported actions: Delete and Add Subtask.
+
+**Delete behavior:**
+- Deleting via context menu has the same effect as deleting via the edit button (confirmation prompt, then removal)
+
+**Add Subtask behavior:**
+- Selecting "Add Subtask" expands the task with its subtask table and creates a new empty subtask row
+- The cursor is automatically placed in the title column of the new subtask row (editing state)
+- If the user navigates away (scrolls away, switches tab, clicks another task to fold, or otherwise collapses the task) while the new subtask is still empty (no title entered), the empty subtask is removed and the task reverts to its previous state (no dropdown indicator if it had no other subtasks, status unchanged)
+
+**Success Criteria:**
+- [ ] A "more options" icon is displayed at the start of each task row
+- [ ] Clicking the icon opens a context menu with "Delete" and "Add Subtask" options
+- [ ] "Delete" removes the task with a confirmation prompt, identical to the edit-button delete flow
+- [ ] "Add Subtask" expands the task and creates a new empty subtask row
+- [ ] The cursor is automatically focused on the title column of the new subtask
+- [ ] If the task is collapsed or the user navigates away while the subtask title is empty, the empty subtask is discarded
+- [ ] A task with no other subtasks reverts to normal display (no dropdown indicator, original status) when an empty subtask is discarded
+- [ ] The context menu closes when an option is selected or when clicking outside it
 
 ---
 
@@ -212,8 +288,8 @@ To Do → In Progress → Done
 **Description:** The app must feel responsive under normal and concurrent load.
 
 **Success Criteria:**
-- [ ] Initial page load completes in under 2 seconds on standard broadband
-- [ ] Task list re-renders within 500ms after a filter change
+- [x] Initial page load completes in under 2 seconds on standard broadband
+- [x] Task list re-renders within 500ms after a filter change
 - [ ] App sustains 100 concurrent users without response times exceeding NFR-01 targets
 
 ---
@@ -222,9 +298,9 @@ To Do → In Progress → Done
 **Description:** The server and database must handle multiple simultaneous user connections efficiently without exhausting resources or degrading response times.
 
 **Success Criteria:**
-- [ ] Database connection pooling is configured and active
-- [ ] The server handles concurrent requests without connection exhaustion or race conditions
-- [ ] Connection pool size is configurable via environment variable
+- [x] Database connection pooling is configured and active
+- [x] The server handles concurrent requests without connection exhaustion or race conditions
+- [x] Connection pool size is configurable via environment variable
 - [ ] Under 100 concurrent users, all response times remain within NFR-01 performance targets
 
 ---
@@ -235,8 +311,8 @@ To Do → In Progress → Done
 **Success Criteria:**
 - [ ] 99.5% uptime target, measured via monthly monitoring report (excluding scheduled maintenance)
 - [ ] Database has automated backups on a daily minimum schedule
-- [ ] App degrades gracefully on DB connection failure (surfaces a user-visible error; does not crash silently)
-- [ ] Server errors return meaningful HTTP status codes and messages
+- [x] App degrades gracefully on DB connection failure (surfaces a user-visible error; does not crash silently)
+- [x] Server errors return meaningful HTTP status codes and messages
 
 ---
 
@@ -244,11 +320,11 @@ To Do → In Progress → Done
 **Description:** User data is protected in transit and at rest.
 
 **Success Criteria:**
-- [ ] All data in transit is encrypted via HTTPS / TLS
-- [ ] No sensitive data is exposed in API responses or server logs
-- [ ] All user inputs are validated and sanitized server-side
-- [ ] Authentication is required to access any task data
-- [ ] API endpoints are protected against unauthorized access
+- [x] All data in transit is encrypted via HTTPS / TLS
+- [x] No sensitive data is exposed in API responses or server logs
+- [x] All user inputs are validated and sanitized server-side
+- [x] Authentication is required to access any task data
+- [x] API endpoints are protected against unauthorized access
 
 ---
 
@@ -256,10 +332,10 @@ To Do → In Progress → Done
 **Description:** The UI should be clean, intuitive, and Notion-inspired with a clear information hierarchy.
 
 **Success Criteria:**
-- [ ] A new user can create and filter a task within 60 seconds without reading documentation
+- [x] A new user can create and filter a task within 60 seconds without reading documentation
 - [ ] UI is responsive across desktop, tablet, and mobile viewports
-- [ ] Consistent visual language across the app: typography, spacing, and color system
-- [ ] Empty states are handled with a descriptive message (e.g. "No tasks due today")
+- [x] Consistent visual language across the app: typography, spacing, and color system
+- [x] Empty states are handled with a descriptive message (e.g. "No tasks due today")
 
 ---
 
@@ -267,6 +343,6 @@ To Do → In Progress → Done
 **Description:** The codebase should support rapid agile iteration with minimal regression risk.
 
 **Success Criteria:**
-- [ ] Core modules have unit test coverage ≥ 80%
-- [ ] New features can be added without modifying unrelated modules (loose coupling)
-- [ ] A CI/CD pipeline runs all tests automatically before any release deployment
+- [ ] Core modules have unit test coverage >= 80%
+- [x] New features can be added without modifying unrelated modules (loose coupling)
+- [x] A CI/CD pipeline runs all tests automatically before any release deployment

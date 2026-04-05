@@ -14,7 +14,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://api:8000',
         changeOrigin: true,
       },
     },
@@ -36,9 +36,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-react': ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
           'vendor-query': ['@tanstack/react-query'],
-          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
           'vendor-radix': [
             '@radix-ui/react-dialog',
             '@radix-ui/react-dropdown-menu',
@@ -49,6 +48,8 @@ export default defineConfig({
             '@radix-ui/react-label',
             '@radix-ui/react-slot',
           ],
+          'vendor-http': ['axios'],
+          'vendor-ui': ['sonner', 'lucide-react'],
         },
       },
     },

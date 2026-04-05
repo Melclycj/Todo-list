@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { format, parseISO } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { Task, TaskStatus } from '@/types/task'
@@ -14,33 +15,59 @@ function nextStatus(current: TaskStatus): TaskStatus {
   return 'in_progress'
 }
 
-interface EditableCellProps {
+export interface EditableCellProps {
   inputValue: string
   displayText: string
   placeholder?: string
   inputType?: 'text' | 'date'
+  /** Render the editor as an inline auto-resizing textarea. */
+  multiline?: boolean
+  /**
+   * Render the editor as a Popover overlay anchored to the cell.
+   * Implies multiline textarea. Max width is min(500px, 90vw).
+   * Click outside → commit. Escape → cancel.
+   */
+  popupEdit?: boolean
   onSave: (value: string) => void
   textClassName?: string
+  disabled?: boolean
 }
 
-function EditableCell({
+export function EditableCell({
   inputValue,
   displayText,
   placeholder = '—',
   inputType = 'text',
+  multiline,
+  popupEdit,
   onSave,
   textClassName,
+  disabled,
 }: EditableCellProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(inputValue)
+  const spanRef = useRef<HTMLSpanElement>(null)
+  // Ref to the floating editor so the mousedown-outside handler can read its value
+  const popupRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
+  const [floatStyle, setFloatStyle] = useState<React.CSSProperties>({})
 
-  function startEdit(e: React.MouseEvent) {
-    e.stopPropagation()
-    setDraft(inputValue)
-    setEditing(true)
-  }
+  // ── mousedown-outside closes popup ───────────────────────────────────────
+  // Using mousedown (not blur) so that horizontal scrolling the table never
+  // accidentally closes the editor — scroll events do not trigger mousedown.
+  useEffect(() => {
+    if (!editing || !popupEdit) return
+    function handleMouseDown(e: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        const val = popupRef.current.value
+        setEditing(false)
+        if (val !== inputValue) onSave(val)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [editing, popupEdit, inputValue, onSave])
 
-  function commit() {
+  function commitInline() {
     setEditing(false)
     if (draft !== inputValue) onSave(draft)
   }
@@ -50,31 +77,39 @@ function EditableCell({
     setEditing(false)
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') { e.preventDefault(); commit() }
-    if (e.key === 'Escape') cancel()
+  function autoResize(el: HTMLTextAreaElement | null) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
   }
 
-  if (editing) {
-    return (
-      <input
-        type={inputType}
-        value={draft}
-        autoFocus
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={handleKeyDown}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none"
-      />
-    )
+  function startEdit(e: React.MouseEvent) {
+    if (disabled) return
+    e.stopPropagation()
+    setDraft(inputValue)
+
+    if (popupEdit && spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect()
+      const vw = window.innerWidth
+      // Width = same as the description column, capped at 90vw
+      const width = Math.min(rect.width, vw * 0.9)
+      // If the column's right edge is off-screen, flush the popup to the
+      // viewport's right edge. Otherwise anchor it to the cell's position.
+      const isRightEdgeVisible = rect.right <= vw
+      const left = isRightEdgeVisible ? rect.left : vw - width
+      setFloatStyle({ position: 'fixed', top: rect.top, left, width })
+    }
+
+    setEditing(true)
   }
 
-  return (
+  const displaySpan = (
     <span
+      ref={spanRef}
       onClick={startEdit}
       className={cn(
-        'cursor-text block min-h-[1.25rem] rounded px-0.5 -mx-0.5 hover:bg-accent/40 text-sm',
+        'block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm leading-5 whitespace-pre-wrap',
+        disabled ? 'cursor-not-allowed' : 'cursor-text hover:bg-accent/40',
         textClassName
       )}
     >
@@ -83,6 +118,94 @@ function EditableCell({
       )}
     </span>
   )
+
+  // ── Popup mode ────────────────────────────────────────────────────────────
+  // Portal renders outside the table so overflow:auto never clips it.
+  // position:fixed keeps it in viewport space regardless of scroll.
+  // Anchored to cell when visible, flush to viewport right edge otherwise.
+  // mousedown-outside saves; Escape cancels.
+  if (popupEdit) {
+    const useTextarea = inputType === 'text' && multiline
+
+    return (
+      <>
+        {displaySpan}
+        {editing && createPortal(
+          useTextarea ? (
+            <textarea
+              ref={(el) => { popupRef.current = el; autoResize(el) }}
+              value={draft}
+              autoFocus
+              rows={1}
+              onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
+              onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...floatStyle, zIndex: 9999 }}
+              className="bg-background border border-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5 shadow-md"
+            />
+          ) : (
+            <input
+              ref={(el) => { popupRef.current = el }}
+              type={inputType}
+              value={draft}
+              autoFocus
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancel()
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  setEditing(false)
+                  if (draft !== inputValue) onSave(draft)
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...floatStyle, zIndex: 9999 }}
+              className="bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none shadow-md"
+            />
+          ),
+          document.body
+        )}
+      </>
+    )
+  }
+
+  // ── Inline multiline (textarea) ───────────────────────────────────────────
+  if (editing && multiline) {
+    return (
+      <textarea
+        ref={autoResize}
+        value={draft}
+        autoFocus
+        rows={1}
+        onChange={(e) => { setDraft(e.target.value); autoResize(e.target) }}
+        onBlur={commitInline}
+        onKeyDown={(e) => { if (e.key === 'Escape') cancel() }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full bg-background ring-1 ring-ring rounded px-0.5 py-0 text-sm focus:outline-none resize-none overflow-hidden leading-5"
+      />
+    )
+  }
+
+  // ── Inline single-line (input) ────────────────────────────────────────────
+  if (editing) {
+    return (
+      <input
+        type={inputType}
+        value={draft}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitInline}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') cancel()
+          if (e.key === 'Enter') { e.preventDefault(); commitInline() }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full bg-background border border-ring rounded px-1.5 py-0.5 text-sm focus:outline-none"
+      />
+    )
+  }
+
+  return displaySpan
 }
 
 interface TaskRowProps {
@@ -138,13 +261,33 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
 
       {/* Title */}
       <td style={{ width: columnWidths.title }} className="px-3 py-2">
-        <EditableCell
-          inputValue={task.title}
-          displayText={task.title}
-          placeholder="Task title"
-          onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
-          textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
-        />
+        {task.recurring_template_id ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={() => toast.info('Titles of recurring task instances cannot be changed')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                toast.info('Titles of recurring task instances cannot be changed')
+              }
+            }}
+            className={cn(
+              'cursor-not-allowed block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm select-none',
+              isDone ? 'line-through text-muted-foreground' : ''
+            )}
+          >
+            {task.title}
+          </span>
+        ) : (
+          <EditableCell
+            inputValue={task.title}
+            displayText={task.title}
+            placeholder="Task title"
+            popupEdit
+            onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
+            textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
+          />
+        )}
       </td>
 
       {/* Due Date */}
@@ -154,6 +297,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           displayText={dueDateDisplay}
           placeholder="No date"
           inputType="date"
+          popupEdit
           onSave={(val) => saveField({ due_date: val ? `${val}T00:00:00` : null })}
         />
       </td>
@@ -169,6 +313,8 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           inputValue={task.description ?? ''}
           displayText={task.description ?? ''}
           placeholder="No description"
+          popupEdit
+          multiline
           onSave={(val) => saveField({ description: val || null })}
         />
       </td>

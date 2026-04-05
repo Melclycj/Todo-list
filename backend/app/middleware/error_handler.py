@@ -18,7 +18,15 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     Returns a 500 response with a generic message.
     Logs the full exception for server-side debugging.
     """
-    logger.exception("Unhandled exception on %s %s", request.method, request.url)
+    logger.exception(
+        "http.error",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "request_id": getattr(request.state, "request_id", None),
+            "user_id": str(uid) if (uid := getattr(request.state, "user_id", None)) else None,
+        },
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

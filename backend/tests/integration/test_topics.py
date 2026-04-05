@@ -31,9 +31,9 @@ class TestTopicCreate:
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_create_topic_unauthenticated_returns_403(self, client):
+    async def test_create_topic_unauthenticated_returns_401(self, client):
         resp = await client.post("/api/v1/topics", json={"name": "Work"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestTopicList:

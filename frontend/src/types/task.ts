@@ -16,6 +16,7 @@ export interface Task {
   created_at: string
   updated_at: string
   topics: Topic[]
+  recurring_template_id: string | null
 }
 
 export interface TaskCreatePayload {
@@ -44,6 +45,8 @@ export interface TaskOrderUpdatePayload {
 }
 
 export type TaskFilterWindow = 'today' | '3days' | 'week' | 'all'
+
+export type ViewMode = 'table' | 'board'
 
 export interface TaskFilterParams {
   window?: TaskFilterWindow

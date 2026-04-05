@@ -18,6 +18,7 @@ function readSavedWidth(): number {
 export function useSidebarResize() {
   const [width, setWidth] = useState<number>(readSavedWidth)
   const cleanupRef = useRef<(() => void) | null>(null)
+  const rafRef = useRef<number>(0)
 
   // Guarantee listeners are removed if the component unmounts mid-drag
   useEffect(() => {
@@ -28,10 +29,14 @@ export function useSidebarResize() {
     e.preventDefault()
 
     function onMouseMove(event: globalThis.MouseEvent) {
-      setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, event.clientX)))
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => {
+        setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, event.clientX)))
+      })
     }
 
     function cleanup() {
+      cancelAnimationFrame(rafRef.current)
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
       cleanupRef.current = null

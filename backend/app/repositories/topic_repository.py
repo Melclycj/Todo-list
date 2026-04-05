@@ -52,19 +52,17 @@ class TopicRepository:
     async def create(self, user_id: uuid.UUID, name: str) -> Topic:
         topic = Topic(user_id=user_id, name=name)
         self._session.add(topic)
-        await self._session.commit()
-        await self._session.refresh(topic)
+        await self._session.flush()
         return topic
 
     async def update(self, topic_id: uuid.UUID, **fields) -> Topic:
         await self._session.execute(
             update(Topic).where(Topic.id == topic_id).values(**fields)
         )
-        await self._session.commit()
         return await self.get_by_id(topic_id)
 
     async def delete(self, topic_id: uuid.UUID) -> None:
         topic = await self.get_by_id(topic_id)
         if topic:
             await self._session.delete(topic)
-            await self._session.commit()
+            await self._session.flush()

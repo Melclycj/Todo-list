@@ -4,11 +4,11 @@ Recurring template repository — queries for recurring task templates and insta
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import insert as sa_insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.recurring import RecurringInstance, RecurringTemplate
+from app.models.recurring import RecurringInstance, RecurringTemplate, recurring_template_topics
 from app.models.topic import Topic
 
 
@@ -48,12 +48,16 @@ class RecurringRepository:
         await self._session.flush()
 
         if topic_ids:
-            topics_result = await self._session.execute(
-                select(Topic).where(Topic.id.in_(topic_ids))
+            valid_ids_result = await self._session.execute(
+                select(Topic.id).where(Topic.id.in_(topic_ids))
             )
-            template.topics = list(topics_result.scalars().all())
+            valid_ids = valid_ids_result.scalars().all()
+            if valid_ids:
+                await self._session.execute(
+                    sa_insert(recurring_template_topics),
+                    [{"template_id": template.id, "topic_id": tid} for tid in valid_ids],
+                )
 
-        await self._session.commit()
         return await self.get_by_id(template.id)
 
     async def update(self, template_id: uuid.UUID, **fields) -> RecurringTemplate | None:
@@ -74,7 +78,6 @@ class RecurringRepository:
                 )
                 template.topics = list(topics_result.scalars().all())
 
-        await self._session.commit()
         return await self.get_by_id(template_id)
 
     async def list_for_user(self, user_id: uuid.UUID) -> list[RecurringTemplate]:
@@ -87,12 +90,13 @@ class RecurringRepository:
         return list(result.scalars().all())
 
     async def get_due_templates(self, now: datetime) -> list[RecurringTemplate]:
-        """Return active templates whose next_run_at <= now."""
+        """Return active templates whose next_run_at <= now, locking rows to prevent duplicate spawning."""
         result = await self._session.execute(
             select(RecurringTemplate)
             .where(RecurringTemplate.is_active.is_(True))
             .where(RecurringTemplate.next_run_at <= now)
             .options(selectinload(RecurringTemplate.topics))
+            .with_for_update(skip_locked=True)
         )
         return list(result.scalars().all())
 
@@ -101,5 +105,5 @@ class RecurringRepository:
     ) -> RecurringInstance:
         instance = RecurringInstance(template_id=template_id, task_id=task_id)
         self._session.add(instance)
-        await self._session.commit()
+        await self._session.flush()
         return instance
