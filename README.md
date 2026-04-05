@@ -44,6 +44,15 @@ Open **http://localhost:8080**
 
 ## Changelog
 
+### v1.0.2 (2026-04-05)
+
+- Inline popup editor for all editable columns (portal-positioned, scroll-safe)
+- Resizable columns and multiline description editing on recurring tasks page
+- View mode dropdown (table/board)
+- Gzip/brotli compression and frontend bundle optimization
+- Sentry error tracking (backend + frontend)
+- BetterStack uptime monitoring
+
 ### v1.0.1 (2026-04-05)
 
 Initial tagged release. Core features complete:
