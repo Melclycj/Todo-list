@@ -35,11 +35,11 @@ test.describe('Task CRUD', () => {
 
     await createTask(page, original)
 
-    // Click the title cell to start inline editing
+    // Click the title cell to start popup editing (portalled to document.body)
     await page.locator('tbody tr', { hasText: original }).getByText(original).click()
 
-    // Type the new value and confirm with Enter
-    const input = page.locator('tbody tr input[type="text"]')
+    // The popup editor is portalled outside the table — locate on body
+    const input = page.locator('body > input[type="text"]')
     await input.fill(updated)
     await input.press('Enter')
 
