@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_file: str = ""  # e.g. "/var/log/app/api.json" — empty means stderr only
+    # Sentry
+    sentry_dsn: str = ""  # empty = disabled
+    sentry_traces_sample_rate: float = 0.2
+    environment: str = "production"
 
 
 settings = Settings()

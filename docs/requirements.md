@@ -205,6 +205,83 @@ To Do → In Progress → Done
 
 ---
 
+### FR-10: Google OpenID Login
+**Description:** Users can log in using their Google account via OpenID Connect, as an alternative to email/password authentication. On first login, a user account is automatically created and linked to the Google identity. Subsequent logins match by email.
+
+**Success Criteria:**
+- [ ] A "Sign in with Google" button is displayed on the login page
+- [ ] Clicking the button redirects to Google's OAuth consent screen
+- [ ] After Google authorization, the user is redirected back and authenticated with a valid session
+- [ ] On first Google login, a new user account is created using the Google profile email
+- [ ] If a user with the same email already exists (registered via email/password), the Google identity is linked to the existing account
+- [ ] Google-authenticated sessions use the same JWT/refresh token mechanism as email/password login
+- [ ] User can log out from a Google-authenticated session; the refresh token is invalidated
+- [ ] If Google authorization is denied or fails, the user is returned to the login page with an error message stating the reason (e.g. "Google login was cancelled" or "Authorization failed")
+- [ ] The Google OAuth client ID and secret are stored as environment variables, never in source code
+
+---
+
+### FR-11: Subtasks
+**Description:** Users can create subtasks under any task. A task with subtasks derives its status from subtask progress rather than being set directly. Subtasks are visible by expanding the parent task row.
+
+**Status display rules:**
+| Condition | Displayed Status |
+|-----------|-----------------|
+| 0 subtasks completed out of m | `Not Started` |
+| n subtasks completed out of m (0 < n < m) | `In Progress: n/m` |
+| All subtasks completed (n = m) | `Done` |
+
+**Expand/collapse rules:**
+- A dropdown indicator is shown before the status column for tasks that have subtasks
+- Clicking the task row expands it to reveal its subtask table
+- Only one task can be expanded at a time; expanding another collapses the currently expanded one
+- Subtasks are displayed as rows in the same table format (same columns and column widths), grouped as a sub-table with a visual gap separating it from the main task list
+- Expanding works in all views: active task list, topic groups, and archive
+
+**Subtask behavior:**
+- A subtask is always associated with its parent task and cannot exist independently
+- Each subtask has its own status (To Do / In Progress / Done)
+- A completed subtask is never moved to the archive view or separated into its own group — it stays with its parent
+- Subtasks follow the same CRUD rules as tasks (create, edit, delete) but scoped to the parent
+
+**Success Criteria:**
+- [ ] User can create a subtask under any existing task
+- [ ] A task with subtasks displays a dropdown indicator before the status column
+- [ ] Task status displays `Not Started`, `In Progress: n/m`, or `Done` based on subtask completion
+- [ ] Clicking a task row with subtasks expands it to show the subtask table
+- [ ] Subtask rows use the same columns and column widths as the main task table
+- [ ] The subtask table is visually separated from adjacent task rows (distinct border or spacing)
+- [ ] Only one task can be expanded at a time; expanding another collapses the previous
+- [ ] Completed subtasks remain with their parent — they are never archived separately
+- [ ] Subtasks are visible when expanding a task in any view (active, topic, archive)
+- [ ] Deleting a parent task deletes all its subtasks
+- [ ] User can edit and delete individual subtasks
+
+---
+
+### FR-12: Row Context Menu
+**Description:** Each task row has a context menu (triggered by a "more options" icon at the start of the row) that provides quick actions. Currently supported actions: Delete and Add Subtask.
+
+**Delete behavior:**
+- Deleting via context menu has the same effect as deleting via the edit button (confirmation prompt, then removal)
+
+**Add Subtask behavior:**
+- Selecting "Add Subtask" expands the task with its subtask table and creates a new empty subtask row
+- The cursor is automatically placed in the title column of the new subtask row (editing state)
+- If the user navigates away (scrolls away, switches tab, clicks another task to fold, or otherwise collapses the task) while the new subtask is still empty (no title entered), the empty subtask is removed and the task reverts to its previous state (no dropdown indicator if it had no other subtasks, status unchanged)
+
+**Success Criteria:**
+- [ ] A "more options" icon is displayed at the start of each task row
+- [ ] Clicking the icon opens a context menu with "Delete" and "Add Subtask" options
+- [ ] "Delete" removes the task with a confirmation prompt, identical to the edit-button delete flow
+- [ ] "Add Subtask" expands the task and creates a new empty subtask row
+- [ ] The cursor is automatically focused on the title column of the new subtask
+- [ ] If the task is collapsed or the user navigates away while the subtask title is empty, the empty subtask is discarded
+- [ ] A task with no other subtasks reverts to normal display (no dropdown indicator, original status) when an empty subtask is discarded
+- [ ] The context menu closes when an option is selected or when clicking outside it
+
+---
+
 ## Non-Functional Requirements
 
 ### NFR-01: Performance

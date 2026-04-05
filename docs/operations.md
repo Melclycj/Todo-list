@@ -10,22 +10,18 @@ Only 2 files produce application logs:
 - `middleware/error_handler.py` — unhandled 500 errors
 - `scheduler/jobs.py` — job success/failure
 
-### Gaps
+### Resolved
+
+- [x] Request ID middleware (`RequestIDMiddleware`) — UUID per request, `X-Request-ID` header
+- [x] Access log middleware (`AccessLogMiddleware`) — method, path, status, duration
+- [x] Structured JSON logging (`python-json-logger`)
+- [x] Log level configurable via `LOG_LEVEL` env var
+
+### Remaining Gaps
 
 | Gap | Impact |
 |-----|--------|
-| No request logging (method, path, status, duration) | Cannot see traffic patterns |
-| No user ID / request ID in log context | Cannot trace requests |
-| No service-layer logging | No audit trail |
-| No structured format (JSON) | Hard to query in log aggregators |
-| No log level configuration from env | Cannot switch DEBUG/INFO without code change |
-
-### Recommended Additions
-
-1. **Request ID middleware** — UUID per request, included in logs and `X-Request-ID` header
-2. **Access log middleware** — method, path, status, duration per request
-3. **Structured JSON logging** — `python-json-logger` for queryable log lines
-4. **Service audit logs** — login, task deletion, etc.
+| No service-layer logging | No audit trail for login, task deletion, etc. |
 
 ---
 
@@ -45,21 +41,23 @@ Only 2 files produce application logs:
 | Application | SSE connection count | Spike (connection leak) |
 | Application | Failed logins | > 10/min per IP |
 
-### Recommended Stack (Minimal)
+### Current Stack
 
-```
-Sentry                    → error tracking + performance (free tier)
-Uptime Robot / BetterStack → uptime + SSL expiry alerts (free tier)
-VPS provider metrics      → CPU, memory, disk
-```
+| Tool | Purpose | Status |
+|------|---------|--------|
+| Sentry | Error tracking + performance | Active — backend (FastAPI) + frontend (React) |
+| BetterStack | Uptime monitoring + status page | Active — monitors `/api/health` every 3 min |
+| VPS provider metrics | CPU, memory, disk | Available via provider dashboard |
 
 ### Day-One Alerts
 
-1. Site is down (`/api/health` fails)
-2. SSL certificate expires in < 14 days
-3. Disk > 80%
-4. Any container restart
-5. 5xx error rate spike
+These are the minimum alerts that should be active from day one of production:
+
+1. **Site is down** — BetterStack monitors `/api/health`, alerts on failure
+2. ~~SSL certificate expires in < 14 days~~ — Not needed; Caddy auto-renews
+3. **Disk > 80%** — Check via VPS provider dashboard/alerts
+4. ~~Any container restart~~ — Covered indirectly: Sentry catches crash errors, BetterStack catches prolonged downtime from crash loops
+5. **5xx error rate spike** — Sentry alerts on new errors; configure alert rule for rate spikes
 
 ---
 
@@ -98,7 +96,7 @@ VPS provider metrics      → CPU, memory, disk
 
 ## VPS Dependency Updates
 
-When dependencies change in `requirements.txt` or `package.json`, Docker images must be rebuilt:
+When dependencies change in `requirements.txt` or `package.json` and you are doing it without using CD pipeline, Docker images must be rebuilt:
 
 ```bash
 ssh vps

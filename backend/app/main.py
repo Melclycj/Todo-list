@@ -7,6 +7,7 @@ FastAPI application entry point.
 """
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -31,6 +32,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 configure_logging(log_level=settings.log_level, log_file=settings.log_file)
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        environment=settings.environment,
+    )
 
 # Routers (imported lazily to avoid circular imports at module level)
 from app.routers import auth, tasks, topics, archive, recurring, reminder
