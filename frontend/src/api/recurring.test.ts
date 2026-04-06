@@ -17,6 +17,7 @@ import {
   createRecurringTemplate,
   updateRecurringTemplate,
   stopRecurringTemplate,
+  deleteRecurringTemplate,
 } from './recurring'
 
 describe('recurring api', () => {
@@ -43,9 +44,15 @@ describe('recurring api', () => {
     expect(client.patch).toHaveBeenCalledWith('/recurring/1', { title: 'Updated' })
   })
 
-  it('stopRecurringTemplate calls DELETE /recurring/:id', async () => {
-    vi.mocked(client.delete).mockResolvedValue({ data: { success: true, data: null } })
+  it('stopRecurringTemplate calls POST /recurring/:id/stop', async () => {
+    vi.mocked(client.post).mockResolvedValue({ data: { success: true, data: null } })
     await stopRecurringTemplate('1')
+    expect(client.post).toHaveBeenCalledWith('/recurring/1/stop')
+  })
+
+  it('deleteRecurringTemplate calls DELETE /recurring/:id', async () => {
+    vi.mocked(client.delete).mockResolvedValue({ data: { success: true, data: null } })
+    await deleteRecurringTemplate('1')
     expect(client.delete).toHaveBeenCalledWith('/recurring/1')
   })
 })

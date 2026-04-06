@@ -1,12 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { format, parseISO } from 'date-fns'
+import { ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Task, TaskStatus } from '@/types/task'
 import type { ColumnKey } from '@/hooks/useColumnResize'
 import { TaskStatusBadge } from './TaskStatusBadge'
 import { TaskTopicSelector } from './TaskTopicSelector'
-import { useUpdateTaskStatus, useUpdateTask } from '@/hooks/useTasks'
+import { RowContextMenu, TASK_DELETE_ACTION, TASK_ADD_SUBTASK_ACTION } from './RowContextMenu'
+import { BulkDeleteDialog } from './BulkDeleteDialog'
+import { SubtaskTable } from './SubtaskTable'
+import { ACTIONS_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH } from './TaskTableHeader'
+import { useUpdateTaskStatus, useUpdateTask, useDeleteTask } from '@/hooks/useTasks'
+import { useCreateSubtask } from '@/hooks/useSubtasks'
 import { toast } from 'sonner'
 
 function nextStatus(current: TaskStatus): TaskStatus {
@@ -208,27 +214,61 @@ export function EditableCell({
   return displaySpan
 }
 
+function getDerivedStatusLabel(task: Task): string | undefined {
+  if (task.subtask_count === 0) return undefined
+  if (task.subtask_done_count === 0) return 'Not started'
+  if (task.subtask_done_count === task.subtask_count) return 'Done'
+  return `In progress: ${task.subtask_done_count}/${task.subtask_count}`
+}
+
+function getDerivedStatus(task: Task): TaskStatus {
+  if (task.subtask_count === 0) return task.status
+  if (task.subtask_done_count === 0) return 'todo'
+  if (task.subtask_done_count === task.subtask_count) return 'done'
+  return 'in_progress'
+}
+
 interface TaskRowProps {
   task: Task
   columnWidths: Record<ColumnKey, number>
   isEditMode?: boolean
   isSelected?: boolean
   onToggleSelect?: (id: string) => void
+  isExpanded?: boolean
+  onToggleExpand?: () => void
+  totalColumns?: number
 }
 
-export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect }: TaskRowProps) {
+export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7 }: TaskRowProps) {
   const { mutate: updateStatus } = useUpdateTaskStatus()
   const { mutate: updateTask } = useUpdateTask(task.id)
-  const isDone = task.status === 'done'
+  const { mutate: deleteTask, isPending: isDeleting } = useDeleteTask()
+  const { mutate: createSubtask } = useCreateSubtask(task.id)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const hasSubtasks = task.subtask_count > 0
+  const derivedLabel = getDerivedStatusLabel(task)
+  const derivedStatus = getDerivedStatus(task)
+  const isDone = hasSubtasks ? derivedStatus === 'done' : task.status === 'done'
 
   function handleStatusClick(e: React.MouseEvent) {
     e.stopPropagation()
+    if (hasSubtasks) return // status is derived from subtasks
     const next = nextStatus(task.status)
     updateStatus(
       { id: task.id, payload: { status: next } },
       {
         onSuccess: () => { if (next === 'done') toast.success('Task completed') },
         onError: () => toast.error('Failed to update status'),
+      }
+    )
+  }
+
+  function handleAddSubtask() {
+    createSubtask(
+      { title: 'New subtask' },
+      {
+        onSuccess: () => { if (!isExpanded) onToggleExpand?.() },
+        onError: () => toast.error('Failed to create subtask'),
       }
     )
   }
@@ -241,83 +281,142 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
   const dueDateDisplay = task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : ''
 
   return (
-    <tr className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isDone && 'opacity-60')}>
-      {/* Checkbox (edit mode only) */}
-      {isEditMode && (
-        <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggleSelect?.(task.id)}
-            className="accent-primary h-4 w-4 cursor-pointer"
+    <>
+      <tr className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isDone && 'opacity-60')}>
+        {/* Checkbox (edit mode only) */}
+        {isEditMode && (
+          <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelect?.(task.id)}
+              className="accent-primary h-4 w-4 cursor-pointer"
+            />
+          </td>
+        )}
+
+        {/* Context menu (normal mode only) */}
+        {!isEditMode && (
+          <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-2 pl-2 pr-0">
+            <RowContextMenu
+              actions={[
+                TASK_DELETE_ACTION(() => setConfirmDelete(true)),
+                TASK_ADD_SUBTASK_ACTION(handleAddSubtask),
+              ]}
+            />
+          </td>
+        )}
+
+        {/* Expand/collapse indicator */}
+        {!isEditMode && (
+          <td style={{ width: EXPAND_COLUMN_WIDTH }} className="py-2 px-0">
+            {hasSubtasks ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleExpand?.() }}
+                className="p-0.5 rounded hover:bg-accent/40 transition-colors"
+                aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
+              >
+                {isExpanded
+                  ? <ChevronDown size={14} className="text-muted-foreground" />
+                  : <ChevronRight size={14} className="text-muted-foreground" />
+                }
+              </button>
+            ) : null}
+          </td>
+        )}
+
+        {/* Status */}
+        <td style={{ width: columnWidths.status }} className="px-3 py-2">
+          <TaskStatusBadge
+            status={hasSubtasks ? derivedStatus : task.status}
+            label={derivedLabel}
+            onClick={handleStatusClick}
+            disabled={hasSubtasks}
           />
         </td>
+
+        {/* Title */}
+        <td style={{ width: columnWidths.title }} className="px-3 py-2">
+          {task.recurring_template_id ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => toast.info('Titles of recurring task instances cannot be changed')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  toast.info('Titles of recurring task instances cannot be changed')
+                }
+              }}
+              className={cn(
+                'cursor-not-allowed block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm select-none',
+                isDone ? 'line-through text-muted-foreground' : ''
+              )}
+            >
+              {task.title}
+            </span>
+          ) : (
+            <EditableCell
+              inputValue={task.title}
+              displayText={task.title}
+              placeholder="Task title"
+              popupEdit
+              onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
+              textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
+            />
+          )}
+        </td>
+
+        {/* Due Date */}
+        <td style={{ width: columnWidths.dueDate }} className="px-3 py-2">
+          <EditableCell
+            inputValue={dueDateInputValue}
+            displayText={dueDateDisplay}
+            placeholder="No date"
+            inputType="date"
+            popupEdit
+            onSave={(val) => saveField({ due_date: val ? `${val}T00:00:00` : null })}
+          />
+        </td>
+
+        {/* Topics */}
+        <td style={{ width: columnWidths.topics }} className="px-3 py-2">
+          <TaskTopicSelector taskId={task.id} selectedTopics={task.topics} />
+        </td>
+
+        {/* Description */}
+        <td style={{ width: columnWidths.description }} className="px-3 py-2">
+          <EditableCell
+            inputValue={task.description ?? ''}
+            displayText={task.description ?? ''}
+            placeholder="No description"
+            popupEdit
+            multiline
+            onSave={(val) => saveField({ description: val || null })}
+          />
+        </td>
+      </tr>
+
+      {isExpanded && hasSubtasks && (
+        <SubtaskTable
+          taskId={task.id}
+          subtasks={task.subtasks}
+          columnWidths={columnWidths}
+          totalColumns={totalColumns}
+        />
       )}
 
-      {/* Status */}
-      <td style={{ width: columnWidths.status }} className="px-3 py-2">
-        <TaskStatusBadge status={task.status} onClick={handleStatusClick} />
-      </td>
-
-      {/* Title */}
-      <td style={{ width: columnWidths.title }} className="px-3 py-2">
-        {task.recurring_template_id ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={() => toast.info('Titles of recurring task instances cannot be changed')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                toast.info('Titles of recurring task instances cannot be changed')
-              }
-            }}
-            className={cn(
-              'cursor-not-allowed block min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-sm select-none',
-              isDone ? 'line-through text-muted-foreground' : ''
-            )}
-          >
-            {task.title}
-          </span>
-        ) : (
-          <EditableCell
-            inputValue={task.title}
-            displayText={task.title}
-            placeholder="Task title"
-            popupEdit
-            onSave={(val) => { if (val.trim()) saveField({ title: val.trim() }) }}
-            textClassName={isDone ? 'line-through text-muted-foreground' : undefined}
-          />
-        )}
-      </td>
-
-      {/* Due Date */}
-      <td style={{ width: columnWidths.dueDate }} className="px-3 py-2">
-        <EditableCell
-          inputValue={dueDateInputValue}
-          displayText={dueDateDisplay}
-          placeholder="No date"
-          inputType="date"
-          popupEdit
-          onSave={(val) => saveField({ due_date: val ? `${val}T00:00:00` : null })}
-        />
-      </td>
-
-      {/* Topics */}
-      <td style={{ width: columnWidths.topics }} className="px-3 py-2">
-        <TaskTopicSelector taskId={task.id} selectedTopics={task.topics} />
-      </td>
-
-      {/* Description */}
-      <td style={{ width: columnWidths.description }} className="px-3 py-2">
-        <EditableCell
-          inputValue={task.description ?? ''}
-          displayText={task.description ?? ''}
-          placeholder="No description"
-          popupEdit
-          multiline
-          onSave={(val) => saveField({ description: val || null })}
-        />
-      </td>
-    </tr>
+      <BulkDeleteDialog
+        open={confirmDelete}
+        count={1}
+        isPending={isDeleting}
+        onConfirm={() => {
+          deleteTask(task.id, {
+            onSuccess: () => { toast.success('Task deleted'); setConfirmDelete(false) },
+            onError: () => toast.error('Failed to delete task'),
+          })
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </>
   )
 }

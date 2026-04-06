@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.task import TaskStatus
+from app.schemas.subtask import SubtaskResponse
 from app.schemas.topic import TopicResponse
 
 
@@ -66,6 +67,9 @@ class TaskResponse(BaseModel):
     manual_order: int | None
     topics: list[TopicResponse]
     recurring_template_id: uuid.UUID | None = None
+    subtask_count: int = 0
+    subtask_done_count: int = 0
+    subtasks: list[SubtaskResponse] = []
     created_at: datetime
     updated_at: datetime
 

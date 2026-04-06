@@ -9,3 +9,4 @@ from app.models.recurring import (  # noqa: F401
     RecurringFrequency,
     recurring_template_topics,
 )
+from app.models.subtask import Subtask  # noqa: F401

@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { TaskRow } from './TaskRow'
-import { TaskTableHeader } from './TaskTableHeader'
+import { TaskTableHeader, ACTIONS_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH } from './TaskTableHeader'
 import { TaskEmptyState } from './TaskEmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useColumnResize } from '@/hooks/useColumnResize'
@@ -34,10 +35,11 @@ export function TaskList({
   onToggleSelect,
 }: TaskListProps) {
   const { widths, startColumnDrag } = useColumnResize()
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
 
   const totalWidth =
     Object.values(widths).reduce((sum, w) => sum + w, 0) +
-    (isEditMode ? CHECKBOX_COLUMN_WIDTH : 0)
+    (isEditMode ? CHECKBOX_COLUMN_WIDTH : ACTIONS_COLUMN_WIDTH + EXPAND_COLUMN_WIDTH)
 
   if (isLoading) {
     return (
@@ -76,6 +78,9 @@ export function TaskList({
               isEditMode={isEditMode}
               isSelected={selectedIds?.has(task.id)}
               onToggleSelect={onToggleSelect}
+              isExpanded={expandedTaskId === task.id}
+              onToggleExpand={() => setExpandedTaskId((prev) => prev === task.id ? null : task.id)}
+              totalColumns={isEditMode ? 6 : 7}
             />
           ))}
         </tbody>

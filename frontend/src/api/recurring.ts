@@ -27,6 +27,11 @@ export async function updateRecurringTemplate(
 }
 
 export async function stopRecurringTemplate(id: string): Promise<ApiResponse<null>> {
+  const { data } = await client.post<ApiResponse<null>>(`/recurring/${id}/stop`)
+  return data
+}
+
+export async function deleteRecurringTemplate(id: string): Promise<ApiResponse<null>> {
   const { data } = await client.delete<ApiResponse<null>>(`/recurring/${id}`)
   return data
 }

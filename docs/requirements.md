@@ -222,7 +222,7 @@ To Do → In Progress → Done
 ---
 
 ### FR-11: Subtasks
-**Description:** Users can create subtasks under any task. A task with subtasks derives its status from subtask progress rather than being set directly. Subtasks are visible by expanding the parent task row.
+**Description:** Users can create subtasks under any task. A task with subtasks derives its status from subtask progress rather than being set directly. Subtasks are visible by expanding the parent task row. Recurring templates cannot have subtasks — only their spawned task instances can.
 
 **Status display rules:**
 | Condition | Displayed Status |
@@ -245,7 +245,8 @@ To Do → In Progress → Done
 - Subtasks follow the same CRUD rules as tasks (create, edit, delete) but scoped to the parent
 
 **Success Criteria:**
-- [ ] User can create a subtask under any existing task
+- [ ] User can create a subtask under any existing task (not recurring templates)
+- [ ] Recurring templates do not show the subtask option; their spawned instances do
 - [ ] A task with subtasks displays a dropdown indicator before the status column
 - [ ] Task status displays `Not Started`, `In Progress: n/m`, or `Done` based on subtask completion
 - [ ] Clicking a task row with subtasks expands it to show the subtask table
@@ -260,10 +261,17 @@ To Do → In Progress → Done
 ---
 
 ### FR-12: Row Context Menu
-**Description:** Each task row has a context menu (triggered by a "more options" icon at the start of the row) that provides quick actions. Currently supported actions: Delete and Add Subtask.
+**Description:** Each task row has a context menu (triggered by a "more options" icon at the start of the row) that provides quick actions. The menu options vary by row type.
+
+**Task rows:** Delete, Add Subtask
+**Recurring template rows:** Delete, Stop
 
 **Delete behavior:**
-- Deleting via context menu has the same effect as deleting via the edit button (confirmation prompt, then removal)
+- For tasks: same effect as deleting via the edit button (confirmation prompt, then removal)
+- For recurring templates: deletes the template permanently; it is not shown in history. Existing spawned instances are unaffected.
+
+**Stop behavior (recurring only):**
+- Stops the recurring template; no new instances are created. Same effect as the existing stop action.
 
 **Add Subtask behavior:**
 - Selecting "Add Subtask" expands the task with its subtask table and creates a new empty subtask row
@@ -271,9 +279,12 @@ To Do → In Progress → Done
 - If the user navigates away (scrolls away, switches tab, clicks another task to fold, or otherwise collapses the task) while the new subtask is still empty (no title entered), the empty subtask is removed and the task reverts to its previous state (no dropdown indicator if it had no other subtasks, status unchanged)
 
 **Success Criteria:**
-- [ ] A "more options" icon is displayed at the start of each task row
-- [ ] Clicking the icon opens a context menu with "Delete" and "Add Subtask" options
-- [ ] "Delete" removes the task with a confirmation prompt, identical to the edit-button delete flow
+- [ ] A "more options" icon is displayed at the start of each task row and recurring template row
+- [ ] Clicking the icon on a task row opens a context menu with "Delete" and "Add Subtask" options
+- [ ] Clicking the icon on a recurring template row opens a context menu with "Delete" and "Stop" options
+- [ ] "Delete" on a task removes it with a confirmation prompt, identical to the edit-button delete flow
+- [ ] "Delete" on a recurring template removes it permanently; it does not appear in history
+- [ ] "Stop" on a recurring template stops future instance creation (same as existing stop action)
 - [ ] "Add Subtask" expands the task and creates a new empty subtask row
 - [ ] The cursor is automatically focused on the title column of the new subtask
 - [ ] If the task is collapsed or the user navigates away while the subtask title is empty, the empty subtask is discarded

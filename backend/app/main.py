@@ -41,7 +41,7 @@ if settings.sentry_dsn:
     )
 
 # Routers (imported lazily to avoid circular imports at module level)
-from app.routers import auth, tasks, topics, archive, recurring, reminder
+from app.routers import auth, tasks, topics, archive, recurring, reminder, subtasks
 
 
 @asynccontextmanager
@@ -100,6 +100,7 @@ app.include_router(topics.router, prefix="/api/v1")
 app.include_router(archive.router, prefix="/api/v1")
 app.include_router(recurring.router, prefix="/api/v1")
 app.include_router(reminder.router, prefix="/api/v1")
+app.include_router(subtasks.router, prefix="/api/v1")
 
 
 @app.get("/api/health", tags=["health"])

@@ -23,10 +23,10 @@ For each task in the sprint scope:
 1. Look up the requirement's success criteria in `docs/requirements.md`.
 2. Write test cases that verify every success criterion.
 3. Run tests — all must pass.
-4. Commit with a descriptive message. Do not include requirement IDs in commits — traceability lives in `sprints.md`.
+4. **Commit immediately** with a descriptive message. Do not include requirement IDs in commits — traceability lives in `sprints.md`. Every completed task MUST have its own commit before moving to the next task.
 5. Mark the task as Done in `docs/sprints.md`.
 
-Do NOT mark a task complete without passing tests and verified success criteria.
+Do NOT mark a task complete without passing tests, verified success criteria, **and a commit**.
 
 ## Sprint Lifecycle
 
