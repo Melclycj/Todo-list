@@ -21,7 +21,10 @@ services:
     build:
       context: ./frontend
       target: builder   # Node.js stage only — Nginx not needed in dev
-    command: npm run dev -- --host 0.0.0.0 --port 5173
+    # Run npm install before dev server to sync node_modules with package.json.
+    # The named volume persists across rebuilds, so without this sync step,
+    # newly added packages would be missing until a manual volume wipe.
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     # Port 8080:80 is inherited from docker-compose.yml (nginx/prod mapping).
     # It binds to container port 80, which has nothing listening in the builder
     # stage — connecting to localhost:8080 will be refused in dev. Use 5173.
@@ -29,9 +32,14 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend:/app
-      # Anonymous volume preserves node_modules installed during image build,
+      # Named volume preserves node_modules across container restarts,
       # preventing the host mount from overwriting them with an empty directory.
-      - /app/node_modules
+      # Unlike anonymous volumes, this survives `docker compose down` (without -v)
+      # and can be selectively removed: `docker volume rm todo-list_frontend_node_modules`
+      - frontend_node_modules:/app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true   # needed for file-watch on Windows/WSL2
       - VITE_POLL=true
+
+volumes:
+  frontend_node_modules:
