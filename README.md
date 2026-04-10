@@ -50,6 +50,14 @@ Open **http://localhost:8080**
 
 ## Changelog
 
+### v1.2.0 (2026-04-10)
+
+- **Drag-and-drop reordering**: Tasks with the same due date can be reordered via drag handle; order persists across refreshes. Cross-date-group drags are structurally prevented.
+- **Slide animations**: Task create drawer slides in/out from right, mobile sidebar slides in/out from left, subtask expand/collapse uses smooth height transition (all 200ms ease-out)
+- **Micro-interactions**: Status badge press feedback (scale-95), reminder banner crossfade on message change (300ms), overdue date icon pulse
+- **Visual polish**: Context menu icon visible at 30% by default, stronger row hover (bg-muted/40), search clear button fade, wider resize handle hit area, empty state fade-in, warm color palette (hue 220, 2% saturation)
+- **Accessibility**: Global `prefers-reduced-motion: reduce` support disables all transitions and animations
+
 ### v1.1.0 (2026-04-06)
 
 - **Subtasks**: Create subtasks under any task with derived parent status (Not Started / In Progress: n/m / Done), expand/collapse UI, and cascade delete

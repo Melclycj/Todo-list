@@ -14,7 +14,7 @@ frontend/src/
 ├── hooks/                    # TanStack Query hooks wrapping api/ calls
 │   ├── useTasks.ts, useTopics.ts, useSubtasks.ts, useRecurring.ts, useReminder.ts, useAuth.ts
 ├── features/                 # Domain-scoped components and pages
-│   ├── tasks/ (TaskRow, TaskList, SubtaskTable, SubtaskRow, SubtaskListReadonly, subtask-styles, RowContextMenu, ...)
+│   ├── tasks/ (TaskRow, TaskList, SubtaskTable, SubtaskRow, SubtaskListReadonly, subtask-styles, RowContextMenu, useDateGroups, ...)
 │   ├── topics/, archive/, recurring/, auth/
 ├── components/               # Shared UI components
 │   ├── layout/ (Sidebar, AppLayout)
