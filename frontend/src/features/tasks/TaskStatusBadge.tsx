@@ -33,7 +33,7 @@ export function TaskStatusBadge({ status, label, onClick, disabled, size = 'defa
         'rounded-full font-medium border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap',
         size === 'sm' ? 'px-1.5 py-0 text-[10px]' : 'px-2 py-0.5 text-xs',
         STATUS_STYLES[status],
-        disabled ? 'cursor-default' : 'cursor-pointer'
+        disabled ? 'cursor-default' : 'cursor-pointer active:scale-95'
       )}
       aria-label={`Status: ${displayLabel}`}
     >

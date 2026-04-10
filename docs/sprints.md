@@ -20,7 +20,7 @@
 | 1 | Mobile sidebar collapse/drawer | FR-05 | Done |
 | 2 | Drag-and-drop reordering for same-day tasks | FR-08 | Done |
 | 3 | Slide animations for drawer and sidebar, subtask expand/collapse animation | FR-13 | Done |
-| 4 | Status badge feedback, reminder crossfade, reduced-motion support | FR-13 | To Do |
+| 4 | Status badge feedback, reminder crossfade, reduced-motion support | FR-13 | Done |
 | 5 | Visual polish: row hover, context menu opacity, search transition, resize handle, empty state fade, warm palette, overdue pulse | FR-13 | To Do |
 
 ### Retrospective

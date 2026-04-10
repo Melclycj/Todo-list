@@ -300,9 +300,9 @@ To Do → In Progress → Done
 - [x] Task create drawer slides in from the right (200ms ease-out) and slides out on close
 - [x] Mobile sidebar slides in from the left (200ms ease-out) with backdrop fade
 - [x] Subtask expand/collapse animates height smoothly (200ms ease-out)
-- [ ] Status badge shows `active:scale-95` press feedback on click
-- [ ] Reminder banner crossfades (300ms) when message text changes
-- [ ] All transitions are disabled when `prefers-reduced-motion: reduce` is active
+- [x] Status badge shows `active:scale-95` press feedback on click
+- [x] Reminder banner crossfades (300ms) when message text changes
+- [x] All transitions are disabled when `prefers-reduced-motion: reduce` is active
 - [ ] Context menu icon is visible at 30% opacity by default, 100% on hover
 - [ ] Task row hover state is visually distinct (`bg-muted/40`)
 - [ ] Search clear button fades in/out with `transition-opacity duration-150`
