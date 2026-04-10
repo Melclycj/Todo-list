@@ -12,15 +12,16 @@
 
 ## Current Sprint
 
-**Sprint 1** | Goal: Subtasks, context menu, and recurring task bug fix
-**Started:** 2026-04-05
+**Sprint 2** | Goal: Frontend polish — mobile layout, drag-and-drop, and micro-interactions
+**Started:** 2026-04-10
 
 | # | Task | Req | Status |
 |---|------|-----|--------|
-| 1 | Row context menu for tasks and recurring templates | FR-12 | To Do |
-| 2 | Subtask creation, display, expand/collapse, and derived status | FR-11 | To Do |
-| 3 | Fix: recurring instances not created at scheduled frequency | FR-06 | Done |
-| 4 | Fix: frequency change not applying from next instance onward | FR-06 | Done |
+| 1 | Mobile sidebar collapse/drawer | FR-05 | Done |
+| 2 | Drag-and-drop reordering for same-day tasks | FR-08 | Done |
+| 3 | Slide animations for drawer and sidebar, subtask expand/collapse animation | FR-13 | To Do |
+| 4 | Status badge feedback, reminder crossfade, reduced-motion support | FR-13 | To Do |
+| 5 | Visual polish: row hover, context menu opacity, search transition, resize handle, empty state fade, warm palette, overdue pulse | FR-13 | To Do |
 
 ### Retrospective
 _Filled at sprint end._
@@ -30,8 +31,6 @@ _Filled at sprint end._
 ## Backlog (prioritized — next sprint picks from top)
 
 - FR-10: Google OpenID login
-- FR-08: Drag-and-drop reordering UI (backend API exists, frontend DnD not implemented)
-- FR-05: Mobile sidebar collapse/drawer
 - NFR-05: Responsive layout for tablet + mobile
 - NFR-06: Reach 80% test coverage
 - Operations: DB performance indexes migration
@@ -39,3 +38,35 @@ _Filled at sprint end._
 ---
 
 ## Completed Sprints
+
+<details>
+<summary>Sprint 1 — Subtasks, context menu, and recurring task bug fix (2026-04-05 to 2026-04-10)</summary>
+
+**Sprint 1** | Goal: Subtasks, context menu, and recurring task bug fix
+**Started:** 2026-04-05
+
+| # | Task | Req | Status |
+|---|------|-----|--------|
+| 1 | Row context menu for tasks and recurring templates | FR-12 | Done |
+| 2 | Subtask creation, display, expand/collapse, and derived status | FR-11 | Done |
+| 3 | Fix: recurring instances not created at scheduled frequency | FR-06 | Done |
+| 4 | Fix: frequency change not applying from next instance onward | FR-06 | Done |
+
+### Retrospective
+
+**What went well:**
+- Full subtask feature delivered end-to-end (migration, ORM, service, API, UI) with derived status display
+- Recurring task bugs (catch-up loop, frequency recalculation) fixed with good unit test coverage
+- Context menu reusable across task rows and recurring template rows
+
+**Problems encountered:**
+- Alembic migration for subtasks initially failed due to `sa.Enum` trying to recreate the existing `taskstatus` PostgreSQL enum; fixed by using `postgresql.ENUM(..., create_type=False)`
+- `docker compose down -v` (used to fix stale node_modules) wiped the postgres data volume, requiring re-registration
+- Recurring catch-up test off-by-one: `<=` boundary meant 4 instances created, not 3
+
+**What was fixed post-review:**
+- FR-11 criterion "Subtasks visible in any view (active, topic, archive)" was failing — archive page had no expand/collapse. Added `SubtaskListReadonly` component and shared `subtask-styles.ts` to fix.
+
+**Spec deviations:** None — all success criteria satisfied after post-review fix.
+
+</details>

@@ -95,7 +95,16 @@ All responses use this envelope:
 | GET | `/recurring` | List recurring templates |
 | POST | `/recurring` | Create recurring template |
 | PATCH | `/recurring/{id}` | Update template |
-| DELETE | `/recurring/{id}` | Stop template permanently |
+| POST | `/recurring/{id}/stop` | Stop template (is_active=false) |
+| DELETE | `/recurring/{id}` | Delete template permanently |
+
+### Subtasks
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/tasks/{task_id}/subtasks` | List subtasks for a task |
+| POST | `/tasks/{task_id}/subtasks` | Create subtask under a task |
+| PATCH | `/tasks/{task_id}/subtasks/{subtask_id}` | Update subtask (title, status, sort_order) |
+| DELETE | `/tasks/{task_id}/subtasks/{subtask_id}` | Delete subtask |
 
 ### Reminder
 | Method | Path | Description |

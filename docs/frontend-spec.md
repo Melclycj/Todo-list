@@ -10,11 +10,12 @@ frontend/src/
 ├── App.tsx                   # Router setup
 ├── api/                      # API client (one file per domain)
 │   ├── client.ts             # Axios instance + interceptors
-│   ├── tasks.ts, topics.ts, archive.ts, recurring.ts, reminder.ts, auth.ts
+│   ├── tasks.ts, topics.ts, archive.ts, recurring.ts, subtasks.ts, reminder.ts, auth.ts
 ├── hooks/                    # TanStack Query hooks wrapping api/ calls
-│   ├── useTasks.ts, useTopics.ts, useReminder.ts, useAuth.ts
+│   ├── useTasks.ts, useTopics.ts, useSubtasks.ts, useRecurring.ts, useReminder.ts, useAuth.ts
 ├── features/                 # Domain-scoped components and pages
-│   ├── tasks/, topics/, archive/, recurring/, auth/
+│   ├── tasks/ (TaskRow, TaskList, SubtaskTable, SubtaskRow, SubtaskListReadonly, subtask-styles, RowContextMenu, ...)
+│   ├── topics/, archive/, recurring/, auth/
 ├── components/               # Shared UI components
 │   ├── layout/ (Sidebar, AppLayout)
 │   └── ui/ (shadcn/ui re-exports)

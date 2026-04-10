@@ -53,10 +53,21 @@
 | user_id | UUID FK → users | |
 | title | VARCHAR(255) | |
 | description | TEXT | Nullable |
-| frequency | ENUM | `weekly`, `fortnightly`, `monthly` |
+| frequency | ENUM | `daily`, `weekly`, `fortnightly`, `monthly` |
 | is_active | BOOLEAN | False = stopped permanently |
 | next_run_at | TIMESTAMPTZ | When next instance should be created |
 | created_at | TIMESTAMPTZ | |
+
+### `subtasks`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID PK | |
+| task_id | UUID FK → tasks (CASCADE) | Indexed |
+| title | VARCHAR(255) | |
+| status | ENUM | Reuses `taskstatus`: `todo`, `in_progress`, `done` |
+| sort_order | INTEGER | Default 0 |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | |
 
 ### `recurring_template_topics` (join table)
 | Column | Type |
@@ -100,6 +111,9 @@ CREATE INDEX ix_tasks_due_date ON tasks(due_date);
 
 -- Topic filter subquery
 CREATE INDEX ix_task_topics_topic_id ON task_topics(topic_id);
+
+-- Subtask lookups by parent task
+CREATE INDEX ix_subtasks_task_id ON subtasks(task_id);
 
 -- Scheduler recurring job
 CREATE INDEX ix_recurring_next_run ON recurring_templates(next_run_at) WHERE is_active = true;

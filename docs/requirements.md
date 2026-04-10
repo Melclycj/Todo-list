@@ -135,7 +135,7 @@ To Do → In Progress → Done
 - [x] Sidebar is always visible on desktop viewports
 - [x] Reminder banner is always pinned to the top of the sidebar
 - [x] Current active view/section is visually highlighted
-- [ ] Sidebar collapses or becomes a drawer on mobile / small screens
+- [x] Sidebar collapses or becomes a drawer on mobile / small screens
 - [x] Navigating via sidebar does not require a full page reload
 
 ---
@@ -188,9 +188,9 @@ To Do → In Progress → Done
 
 **Success Criteria:**
 - [x] Tasks are displayed in ascending order by due date by default
-- [ ] User can drag and drop tasks with the same due date to reorder them within that group
-- [ ] Manual ordering persists after page refresh
-- [ ] System prompts the user if a drag-and-drop action would violate date-based ordering
+- [x] User can drag and drop tasks with the same due date to reorder them within that group
+- [x] Manual ordering persists after page refresh
+- [x] System prevents drag-and-drop across date groups (each group is an independent sortable context)
 - [x] Tasks with no due date are listed in a separate section below dated tasks
 
 ---
@@ -245,18 +245,18 @@ To Do → In Progress → Done
 - Subtasks follow the same CRUD rules as tasks (create, edit, delete) but scoped to the parent
 
 **Success Criteria:**
-- [ ] User can create a subtask under any existing task (not recurring templates)
-- [ ] Recurring templates do not show the subtask option; their spawned instances do
-- [ ] A task with subtasks displays a dropdown indicator before the status column
-- [ ] Task status displays `Not Started`, `In Progress: n/m`, or `Done` based on subtask completion
-- [ ] Clicking a task row with subtasks expands it to show the subtask table
-- [ ] Subtask rows use the same columns and column widths as the main task table
-- [ ] The subtask table is visually separated from adjacent task rows (distinct border or spacing)
-- [ ] Only one task can be expanded at a time; expanding another collapses the previous
-- [ ] Completed subtasks remain with their parent — they are never archived separately
-- [ ] Subtasks are visible when expanding a task in any view (active, topic, archive)
-- [ ] Deleting a parent task deletes all its subtasks
-- [ ] User can edit and delete individual subtasks
+- [x] User can create a subtask under any existing task (not recurring templates)
+- [x] Recurring templates do not show the subtask option; their spawned instances do
+- [x] A task with subtasks displays a dropdown indicator before the status column
+- [x] Task status displays `Not Started`, `In Progress: n/m`, or `Done` based on subtask completion
+- [x] Clicking a task row with subtasks expands it to show the subtask table
+- [x] Subtask rows use the same columns and column widths as the main task table
+- [x] The subtask table is visually separated from adjacent task rows (distinct border or spacing)
+- [x] Only one task can be expanded at a time; expanding another collapses the previous
+- [x] Completed subtasks remain with their parent — they are never archived separately
+- [x] Subtasks are visible when expanding a task in any view (active, topic, archive)
+- [x] Deleting a parent task deletes all its subtasks
+- [x] User can edit and delete individual subtasks
 
 ---
 
@@ -279,17 +279,37 @@ To Do → In Progress → Done
 - If the user navigates away (scrolls away, switches tab, clicks another task to fold, or otherwise collapses the task) while the new subtask is still empty (no title entered), the empty subtask is removed and the task reverts to its previous state (no dropdown indicator if it had no other subtasks, status unchanged)
 
 **Success Criteria:**
-- [ ] A "more options" icon is displayed at the start of each task row and recurring template row
-- [ ] Clicking the icon on a task row opens a context menu with "Delete" and "Add Subtask" options
-- [ ] Clicking the icon on a recurring template row opens a context menu with "Delete" and "Stop" options
-- [ ] "Delete" on a task removes it with a confirmation prompt, identical to the edit-button delete flow
-- [ ] "Delete" on a recurring template removes it permanently; it does not appear in history
-- [ ] "Stop" on a recurring template stops future instance creation (same as existing stop action)
-- [ ] "Add Subtask" expands the task and creates a new empty subtask row
-- [ ] The cursor is automatically focused on the title column of the new subtask
-- [ ] If the task is collapsed or the user navigates away while the subtask title is empty, the empty subtask is discarded
-- [ ] A task with no other subtasks reverts to normal display (no dropdown indicator, original status) when an empty subtask is discarded
-- [ ] The context menu closes when an option is selected or when clicking outside it
+- [x] A "more options" icon is displayed at the start of each task row and recurring template row
+- [x] Clicking the icon on a task row opens a context menu with "Delete" and "Add Subtask" options
+- [x] Clicking the icon on a recurring template row opens a context menu with "Delete" and "Stop" options
+- [x] "Delete" on a task removes it with a confirmation prompt, identical to the edit-button delete flow
+- [x] "Delete" on a recurring template removes it permanently; it does not appear in history
+- [x] "Stop" on a recurring template stops future instance creation (same as existing stop action)
+- [x] "Add Subtask" expands the task and creates a new empty subtask row
+- [x] The cursor is automatically focused on the title column of the new subtask
+- [x] If the task is collapsed or the user navigates away while the subtask title is empty, the empty subtask is discarded
+- [x] A task with no other subtasks reverts to normal display (no dropdown indicator, original status) when an empty subtask is discarded
+- [x] The context menu closes when an option is selected or when clicking outside it
+
+---
+
+### FR-13: UI Micro-interactions & Visual Polish
+**Description:** Improve the app's visual quality and dynamic feedback through micro-interactions, smoother transitions, and accessibility compliance. All animations must respect `prefers-reduced-motion`.
+
+**Success Criteria:**
+- [ ] Task create drawer slides in from the right (200ms ease-out) and slides out on close
+- [ ] Mobile sidebar slides in from the left (200ms ease-out) with backdrop fade
+- [ ] Subtask expand/collapse animates height smoothly (200ms ease-out)
+- [ ] Status badge shows `active:scale-95` press feedback on click
+- [ ] Reminder banner crossfades (300ms) when message text changes
+- [ ] All transitions are disabled when `prefers-reduced-motion: reduce` is active
+- [ ] Context menu icon is visible at 30% opacity by default, 100% on hover
+- [ ] Task row hover state is visually distinct (`bg-muted/40`)
+- [ ] Search clear button fades in/out with `transition-opacity duration-150`
+- [ ] Table column resize handle has a wider hit area (w-2)
+- [ ] Empty state fades in on mount (opacity 0 to 1, 300ms)
+- [ ] Muted/background colors have slight warm saturation (1-2% at hue 220)
+- [ ] Overdue date icon uses a gentle pulse animation
 
 ---
 

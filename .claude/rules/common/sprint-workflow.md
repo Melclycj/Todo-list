@@ -22,11 +22,14 @@ Any new feature must have a requirement in `docs/requirements.md` before impleme
 For each task in the sprint scope:
 1. Look up the requirement's success criteria in `docs/requirements.md`.
 2. Write test cases that verify every success criterion.
-3. Run tests — all must pass.
-4. **Commit immediately** with a descriptive message. Do not include requirement IDs in commits — traceability lives in `sprints.md`. Every completed task MUST have its own commit before moving to the next task.
-5. Mark the task as Done in `docs/sprints.md`.
+3. Implement the feature / fix until all tests pass.
+4. **Verify success criteria** — go through each criterion one by one:
+   - **Automatable criterion** (can be verified via test or code inspection): run the test or inspect the code. If it fails, iterate on the implementation until it passes. Tick it off in `docs/requirements.md` once verified.
+   - **Manual criterion** (requires human interaction, visual check, or external system): mark the sprint task as `Waiting for User` and list the criteria that need manual confirmation. Do NOT mark the task Done.
+5. If ALL criteria are satisfied (all ticked): **commit immediately** with a descriptive message. Do not include requirement IDs in commits — traceability lives in `sprints.md`. Every completed task MUST have its own commit before moving to the next task. Mark the task as **Done** in `docs/sprints.md`.
+6. If some criteria are `Waiting for User`: commit the implementation, mark the task as `Waiting for User` in `docs/sprints.md`, and move to the next task.
 
-Do NOT mark a task complete without passing tests, verified success criteria, **and a commit**.
+Do NOT mark a task Done without ALL success criteria verified, passing tests, **and a commit**.
 
 ## Sprint Lifecycle
 

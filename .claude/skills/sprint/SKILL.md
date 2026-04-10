@@ -43,17 +43,15 @@ Auto-triggered when all tasks are **Done**. If tasks are **Waiting for User**, t
 
 Steps:
 1. Verify all tasks are Done or Waiting for User. If any are still To Do / In Progress, list them and ask the user how to proceed (complete now, move to backlog, or mark waiting).
-2. **Success criteria verification**: For every Done task, re-read its linked requirement in `docs/requirements.md` and verify each success criterion is satisfied. Run existing test cases to confirm. List any criteria that are not met — these must be resolved before the sprint can close.
-3. Tick off verified success criteria in `docs/requirements.md`.
-4. Fill in the **Retrospective** section:
+2. Trust that Done tasks have already passed success criteria verification (this happens at task completion time, not sprint stop). Do NOT re-verify criteria.
+3. Fill in the **Retrospective** section:
    - What went well
    - Problems encountered
    - New requirements or bugs discovered (add to backlog if applicable)
-5. **Spec drift check**: Compare what was implemented against `docs/` specs. Update any specs that no longer match.
-6. Mark all completed tasks as Done in the sprint table.
-7. Update the changelog in `README.md` with a summary of what was delivered.
-8. Leave the sprint in place under **Current Sprint** (do not archive yet).
-9. Ask the user if they want to archive and/or start the next sprint.
+4. **Spec drift check**: Compare what was implemented against `docs/` specs. Update any specs that no longer match.
+5. Update the changelog in `README.md` with a summary of what was delivered.
+6. Leave the sprint in place under **Current Sprint** (do not archive yet).
+7. Ask the user if they want to archive and/or start the next sprint.
 
 ## `/sprint archive`
 

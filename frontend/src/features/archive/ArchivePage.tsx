@@ -1,16 +1,25 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TaskEmptyState } from '@/features/tasks/TaskEmptyState'
 import { TaskTopicTags } from '@/features/tasks/TaskTopicTags'
+import { SubtaskListReadonly } from '@/features/tasks/SubtaskListReadonly'
 import { useArchivedTasks, useRestoreTask } from '@/hooks/useArchive'
 import { toast } from 'sonner'
 import type { Task } from '@/types/task'
 
-function ArchiveRow({ task }: { task: Task }) {
+interface ArchiveRowProps {
+  task: Task
+  isExpanded: boolean
+  onToggleExpand: () => void
+}
+
+function ArchiveRow({ task, isExpanded, onToggleExpand }: ArchiveRowProps) {
   const { mutate: restore, isPending } = useRestoreTask()
+  const hasSubtasks = task.subtask_count > 0
 
   function handleRestore() {
     restore(task.id, {
@@ -20,37 +29,64 @@ function ArchiveRow({ task }: { task: Task }) {
   }
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 border-b border-border hover:bg-muted/30">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm line-through text-muted-foreground truncate">{task.title}</p>
-        <div className="flex items-center gap-2 mt-1">
-          {task.done_at && (
-            <span className="text-xs text-muted-foreground">
-              Done {format(parseISO(task.done_at), 'MMM d, yyyy')}
-            </span>
-          )}
-          <TaskTopicTags topics={task.topics} />
-        </div>
-        {task.result_note && (
-          <p className="text-xs text-muted-foreground mt-0.5 italic">"{task.result_note}"</p>
+    <div className="border-b border-border">
+      <div
+        className={cn(
+          'group flex items-center gap-3 px-4 py-3 hover:bg-muted/30',
+          hasSubtasks && 'cursor-pointer'
         )}
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="opacity-0 group-hover:opacity-100 transition-opacity gap-1.5 text-muted-foreground"
-        onClick={handleRestore}
-        disabled={isPending}
+        onClick={hasSubtasks ? onToggleExpand : undefined}
       >
-        <RotateCcw size={13} />
-        Restore
-      </Button>
+        {/* Expand/collapse indicator */}
+        <div className="w-4 flex-shrink-0">
+          {hasSubtasks && (
+            <ChevronRight
+              size={14}
+              className={cn(
+                'text-muted-foreground transition-transform',
+                isExpanded && 'rotate-90'
+              )}
+            />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm line-through text-muted-foreground truncate">{task.title}</p>
+          <div className="flex items-center gap-2 mt-1">
+            {task.done_at && (
+              <span className="text-xs text-muted-foreground">
+                Done {format(parseISO(task.done_at), 'MMM d, yyyy')}
+              </span>
+            )}
+            <TaskTopicTags topics={task.topics} />
+          </div>
+          {task.result_note && (
+            <p className="text-xs text-muted-foreground mt-0.5 italic">"{task.result_note}"</p>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="opacity-0 group-hover:opacity-100 transition-opacity gap-1.5 text-muted-foreground"
+          onClick={(e) => { e.stopPropagation(); handleRestore() }}
+          disabled={isPending}
+        >
+          <RotateCcw size={13} />
+          Restore
+        </Button>
+      </div>
+
+      {/* Subtask list */}
+      {isExpanded && hasSubtasks && (
+        <SubtaskListReadonly subtasks={task.subtasks} className="ml-8 mb-2" />
+      )}
     </div>
   )
 }
 
 export function ArchivePage() {
   const [page, setPage] = useState(1)
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const { data, isLoading } = useArchivedTasks(page)
   const tasks = data?.tasks ?? []
   const meta = data?.meta
@@ -80,7 +116,12 @@ export function ArchivePage() {
           <>
             <div className="border border-border rounded-lg overflow-hidden">
               {tasks.map((task) => (
-                <ArchiveRow key={task.id} task={task} />
+                <ArchiveRow
+                  key={task.id}
+                  task={task}
+                  isExpanded={expandedTaskId === task.id}
+                  onToggleExpand={() => setExpandedTaskId((prev) => prev === task.id ? null : task.id)}
+                />
               ))}
             </div>
 
