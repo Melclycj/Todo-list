@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { format, parseISO } from 'date-fns'
-import { ChevronRight, ChevronDown } from 'lucide-react'
+import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import type { Task, TaskStatus } from '@/types/task'
 import type { ColumnKey } from '@/hooks/useColumnResize'
@@ -10,9 +12,8 @@ import { TaskTopicSelector } from './TaskTopicSelector'
 import { RowContextMenu, TASK_DELETE_ACTION, TASK_ADD_SUBTASK_ACTION } from './RowContextMenu'
 import { BulkDeleteDialog } from './BulkDeleteDialog'
 import { SubtaskTable } from './SubtaskTable'
-import { ACTIONS_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH } from './TaskTableHeader'
+import { ACTIONS_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH, DRAG_HANDLE_WIDTH } from './TaskTableHeader'
 import { useUpdateTaskStatus, useUpdateTask, useDeleteTask } from '@/hooks/useTasks'
-import { useCreateSubtask } from '@/hooks/useSubtasks'
 import { toast } from 'sonner'
 
 function nextStatus(current: TaskStatus): TaskStatus {
@@ -237,18 +238,38 @@ interface TaskRowProps {
   isExpanded?: boolean
   onToggleExpand?: () => void
   totalColumns?: number
+  isDragDisabled?: boolean
 }
 
-export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7 }: TaskRowProps) {
+export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled }: TaskRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, disabled: isDragDisabled || isEditMode })
   const { mutate: updateStatus } = useUpdateTaskStatus()
   const { mutate: updateTask } = useUpdateTask(task.id)
   const { mutate: deleteTask, isPending: isDeleting } = useDeleteTask()
-  const { mutate: createSubtask } = useCreateSubtask(task.id)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [pendingNewSubtask, setPendingNewSubtask] = useState(false)
   const hasSubtasks = task.subtask_count > 0
   const derivedLabel = getDerivedStatusLabel(task)
   const derivedStatus = getDerivedStatus(task)
   const isDone = hasSubtasks ? derivedStatus === 'done' : task.status === 'done'
+
+  // Clear ephemeral row when task is collapsed
+  useEffect(() => {
+    if (!isExpanded) setPendingNewSubtask(false)
+  }, [isExpanded])
+
+  const cancelPendingSubtask = useCallback(() => {
+    setPendingNewSubtask(false)
+    // If task has no real subtasks, collapse it back
+    if (task.subtask_count === 0) onToggleExpand?.()
+  }, [task.subtask_count, onToggleExpand])
 
   function handleStatusClick(e: React.MouseEvent) {
     e.stopPropagation()
@@ -264,13 +285,8 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
   }
 
   function handleAddSubtask() {
-    createSubtask(
-      { title: 'New subtask' },
-      {
-        onSuccess: () => { if (!isExpanded) onToggleExpand?.() },
-        onError: () => toast.error('Failed to create subtask'),
-      }
-    )
+    setPendingNewSubtask(true)
+    if (!isExpanded) onToggleExpand?.()
   }
 
   function saveField(payload: { title?: string; due_date?: string | null; description?: string | null }) {
@@ -282,7 +298,15 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
 
   return (
     <>
-      <tr className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isDone && 'opacity-60')}>
+      <tr
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+          opacity: isDragging ? 0.4 : undefined,
+        }}
+        className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isDone && 'opacity-60')}
+      >
         {/* Checkbox (edit mode only) */}
         {isEditMode && (
           <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
@@ -295,9 +319,25 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           </td>
         )}
 
+        {/* Drag handle + context menu (normal mode only) */}
+        {!isEditMode && (
+          <td style={{ width: DRAG_HANDLE_WIDTH }} className="py-2 pl-1 pr-0">
+            {!isDragDisabled ? (
+              <button
+                {...attributes}
+                {...listeners}
+                className="opacity-0 group-hover:opacity-60 focus:opacity-60 transition-opacity p-0.5 cursor-grab active:cursor-grabbing touch-none"
+                aria-label="Drag to reorder"
+              >
+                <GripVertical size={12} className="text-muted-foreground" />
+              </button>
+            ) : null}
+          </td>
+        )}
+
         {/* Context menu (normal mode only) */}
         {!isEditMode && (
-          <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-2 pl-2 pr-0">
+          <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-2 pl-0 pr-0">
             <RowContextMenu
               actions={[
                 TASK_DELETE_ACTION(() => setConfirmDelete(true)),
@@ -310,7 +350,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
         {/* Expand/collapse indicator */}
         {!isEditMode && (
           <td style={{ width: EXPAND_COLUMN_WIDTH }} className="py-2 px-0">
-            {hasSubtasks ? (
+            {(hasSubtasks || pendingNewSubtask) ? (
               <button
                 onClick={(e) => { e.stopPropagation(); onToggleExpand?.() }}
                 className="p-0.5 rounded hover:bg-accent/40 transition-colors"
@@ -396,12 +436,15 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
         </td>
       </tr>
 
-      {isExpanded && hasSubtasks && (
+      {isExpanded && (hasSubtasks || pendingNewSubtask) && (
         <SubtaskTable
           taskId={task.id}
           subtasks={task.subtasks}
           columnWidths={columnWidths}
           totalColumns={totalColumns}
+          pendingNewSubtask={pendingNewSubtask}
+          onCancelPending={cancelPendingSubtask}
+          onCreatedPending={() => setPendingNewSubtask(false)}
         />
       )}
 

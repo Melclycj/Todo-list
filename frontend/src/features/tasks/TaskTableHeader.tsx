@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import type { ColumnKey } from '@/hooks/useColumnResize'
 
+export const DRAG_HANDLE_WIDTH = 20
 export const ACTIONS_COLUMN_WIDTH = 32
 export const EXPAND_COLUMN_WIDTH = 24
 
@@ -23,6 +24,7 @@ export function TaskTableHeader({ widths, onStartDrag, isEditMode }: TaskTableHe
     <thead className="sticky top-0 z-10 bg-muted">
       <tr>
         {isEditMode && <th className="w-10 border-b border-border" />}
+        {!isEditMode && <th style={{ width: DRAG_HANDLE_WIDTH }} className="border-b border-border" />}
         {!isEditMode && <th style={{ width: ACTIONS_COLUMN_WIDTH }} className="border-b border-border" />}
         {!isEditMode && <th style={{ width: EXPAND_COLUMN_WIDTH }} className="border-b border-border" />}
         {COLUMNS.map((col) => (
