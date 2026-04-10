@@ -22,7 +22,7 @@ export function RowContextMenu({ actions }: RowContextMenuProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-accent"
+          className="opacity-30 group-hover:opacity-100 focus:opacity-100 transition-opacity p-0.5 rounded hover:bg-accent"
           onClick={(e) => e.stopPropagation()}
           aria-label="More options"
         >

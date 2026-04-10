@@ -1,4 +1,5 @@
 import { Search, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 
 interface TaskSearchBarProps {
@@ -20,15 +21,16 @@ export function TaskSearchBar({ value, onChange, placeholder = 'Search tasks…'
         placeholder={placeholder}
         className="pl-8 pr-8"
       />
-      {value && (
-        <button
-          onClick={() => onChange('')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          aria-label="Clear search"
-        >
-          <X size={13} />
-        </button>
-      )}
+      <button
+        onClick={() => onChange('')}
+        className={cn(
+          'absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-opacity duration-150',
+          value ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        )}
+        aria-label="Clear search"
+      >
+        <X size={13} />
+      </button>
     </div>
   )
 }

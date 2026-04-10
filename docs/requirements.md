@@ -303,13 +303,13 @@ To Do → In Progress → Done
 - [x] Status badge shows `active:scale-95` press feedback on click
 - [x] Reminder banner crossfades (300ms) when message text changes
 - [x] All transitions are disabled when `prefers-reduced-motion: reduce` is active
-- [ ] Context menu icon is visible at 30% opacity by default, 100% on hover
-- [ ] Task row hover state is visually distinct (`bg-muted/40`)
-- [ ] Search clear button fades in/out with `transition-opacity duration-150`
-- [ ] Table column resize handle has a wider hit area (w-2)
-- [ ] Empty state fades in on mount (opacity 0 to 1, 300ms)
-- [ ] Muted/background colors have slight warm saturation (1-2% at hue 220)
-- [ ] Overdue date icon uses a gentle pulse animation
+- [x] Context menu icon is visible at 30% opacity by default, 100% on hover
+- [x] Task row hover state is visually distinct (`bg-muted/40`)
+- [x] Search clear button fades in/out with `transition-opacity duration-150`
+- [x] Table column resize handle has a wider hit area (w-2)
+- [x] Empty state fades in on mount (opacity 0 to 1, 300ms)
+- [x] Muted/background colors have slight warm saturation (1-2% at hue 220)
+- [x] Overdue date icon uses a gentle pulse animation
 
 ---
 

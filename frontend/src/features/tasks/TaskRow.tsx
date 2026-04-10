@@ -305,7 +305,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           transition,
           opacity: isDragging ? 0.4 : undefined,
         }}
-        className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isDone && 'opacity-60')}
+        className={cn('group border-b border-border hover:bg-muted/40 transition-colors', isDone && 'opacity-60')}
       >
         {/* Checkbox (edit mode only) */}
         {isEditMode && (

@@ -3,12 +3,12 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
+    --background: 220 2% 100%;
+    --foreground: 220 5% 10%;
+    --muted: 220 2% 96%;
+    --muted-foreground: 220 2% 45%;
+    --border: 220 2% 90%;
+    --input: 220 2% 90%;
     --ring: 221 83% 53%;
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
@@ -45,6 +45,11 @@
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @layer base {

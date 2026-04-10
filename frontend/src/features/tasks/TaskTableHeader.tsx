@@ -35,7 +35,7 @@ export function TaskTableHeader({ widths, onStartDrag, isEditMode }: TaskTableHe
           >
             {col.label}
             <div
-              className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-border hover:bg-primary transition-colors"
+              className="absolute right-0 top-0 h-full w-2 cursor-col-resize bg-border hover:bg-primary transition-colors"
               onMouseDown={(e) => onStartDrag(col.key, e)}
             />
           </th>
