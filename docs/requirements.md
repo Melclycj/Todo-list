@@ -297,9 +297,9 @@ To Do → In Progress → Done
 **Description:** Improve the app's visual quality and dynamic feedback through micro-interactions, smoother transitions, and accessibility compliance. All animations must respect `prefers-reduced-motion`.
 
 **Success Criteria:**
-- [ ] Task create drawer slides in from the right (200ms ease-out) and slides out on close
-- [ ] Mobile sidebar slides in from the left (200ms ease-out) with backdrop fade
-- [ ] Subtask expand/collapse animates height smoothly (200ms ease-out)
+- [x] Task create drawer slides in from the right (200ms ease-out) and slides out on close
+- [x] Mobile sidebar slides in from the left (200ms ease-out) with backdrop fade
+- [x] Subtask expand/collapse animates height smoothly (200ms ease-out)
 - [ ] Status badge shows `active:scale-95` press feedback on click
 - [ ] Reminder banner crossfades (300ms) when message text changes
 - [ ] All transitions are disabled when `prefers-reduced-motion: reduce` is active

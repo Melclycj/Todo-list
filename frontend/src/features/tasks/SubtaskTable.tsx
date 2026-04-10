@@ -15,9 +15,11 @@ interface SubtaskTableProps {
   pendingNewSubtask?: boolean
   onCancelPending?: () => void
   onCreatedPending?: () => void
+  /** When true, render inner content only (no outer tr/td wrapper — caller handles it) */
+  isInner?: boolean
 }
 
-export function SubtaskTable({ taskId, subtasks, columnWidths, totalColumns, pendingNewSubtask, onCancelPending, onCreatedPending }: SubtaskTableProps) {
+export function SubtaskTable({ taskId, subtasks, columnWidths, totalColumns, pendingNewSubtask, onCancelPending, onCreatedPending, isInner }: SubtaskTableProps) {
   const { mutate: createSubtask, isPending } = useCreateSubtask(taskId)
   const [newTitle, setNewTitle] = useState('')
   const pendingInputRef = useRef<HTMLInputElement>(null)
@@ -56,9 +58,7 @@ export function SubtaskTable({ taskId, subtasks, columnWidths, totalColumns, pen
     )
   }
 
-  return (
-    <tr>
-      <td colSpan={totalColumns} className="p-0">
+  const content = (
         <div className={SUBTASK_WRAPPER_CLASS}>
           <table
             className="border-collapse w-full"
@@ -136,6 +136,14 @@ export function SubtaskTable({ taskId, subtasks, columnWidths, totalColumns, pen
             </tbody>
           </table>
         </div>
+  )
+
+  if (isInner) return content
+
+  return (
+    <tr>
+      <td colSpan={totalColumns} className="p-0">
+        {content}
       </td>
     </tr>
   )

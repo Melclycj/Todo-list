@@ -436,16 +436,28 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
         </td>
       </tr>
 
-      {isExpanded && (hasSubtasks || pendingNewSubtask) && (
-        <SubtaskTable
-          taskId={task.id}
-          subtasks={task.subtasks}
-          columnWidths={columnWidths}
-          totalColumns={totalColumns}
-          pendingNewSubtask={pendingNewSubtask}
-          onCancelPending={cancelPendingSubtask}
-          onCreatedPending={() => setPendingNewSubtask(false)}
-        />
+      {(hasSubtasks || pendingNewSubtask) && (
+        <tr>
+          <td colSpan={totalColumns} className="p-0">
+            <div
+              className="grid transition-[grid-template-rows] duration-200 ease-out"
+              style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
+            >
+              <div className="overflow-hidden">
+                <SubtaskTable
+                  taskId={task.id}
+                  subtasks={task.subtasks}
+                  columnWidths={columnWidths}
+                  totalColumns={totalColumns}
+                  pendingNewSubtask={pendingNewSubtask}
+                  onCancelPending={cancelPendingSubtask}
+                  onCreatedPending={() => setPendingNewSubtask(false)}
+                  isInner
+                />
+              </div>
+            </div>
+          </td>
+        </tr>
       )}
 
       <BulkDeleteDialog

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Sidebar } from './Sidebar'
 import { Button } from '@/components/ui/button'
 import { useSidebarResize } from '@/hooks/useSidebarResize'
@@ -8,6 +9,27 @@ import { useSidebarResize } from '@/hooks/useSidebarResize'
 export function AppLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const { width: sidebarWidth, startDrag } = useSidebarResize()
+
+  // Animated mobile sidebar state
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (mobileSidebarOpen) {
+      setMounted(true)
+      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
+    } else {
+      setVisible(false)
+    }
+  }, [mobileSidebarOpen])
+
+  function handleTransitionEnd() {
+    if (!visible) setMounted(false)
+  }
+
+  function closeMobile() {
+    setMobileSidebarOpen(false)
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -23,14 +45,23 @@ export function AppLayout() {
       />
 
       {/* Mobile sidebar overlay */}
-      {mobileSidebarOpen && (
+      {mounted && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-            onClick={() => setMobileSidebarOpen(false)}
+            className={cn(
+              'fixed inset-0 z-40 bg-black/40 lg:hidden transition-opacity duration-200',
+              visible ? 'opacity-100' : 'opacity-0'
+            )}
+            onClick={closeMobile}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-[260px] lg:hidden">
-            <Sidebar onClose={() => setMobileSidebarOpen(false)} />
+          <aside
+            className={cn(
+              'fixed inset-y-0 left-0 z-50 w-[260px] lg:hidden transition-transform duration-200 ease-out',
+              visible ? 'translate-x-0' : '-translate-x-full'
+            )}
+            onTransitionEnd={handleTransitionEnd}
+          >
+            <Sidebar onClose={closeMobile} />
           </aside>
         </>
       )}

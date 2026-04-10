@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { TaskForm, type TaskFormValues } from './TaskForm'
 import { useCreateTask } from '@/hooks/useTasks'
 import { useCreateRecurringTemplate } from '@/hooks/useRecurring'
@@ -15,7 +17,25 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
   const { mutate: createTask, isPending: isCreatingTask } = useCreateTask()
   const { mutate: createTemplate, isPending: isCreatingTemplate } = useCreateRecurringTemplate()
 
-  if (!open) return null
+  // Keep the drawer mounted during exit animation
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+      // Next frame: trigger enter transition
+      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
+    } else {
+      setVisible(false)
+    }
+  }, [open])
+
+  function handleTransitionEnd() {
+    if (!visible) setMounted(false)
+  }
+
+  if (!mounted) return null
 
   function handleSubmit(values: TaskFormValues) {
     if (values.isRecurring) {
@@ -60,12 +80,21 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/30"
+        className={cn(
+          'fixed inset-0 z-40 bg-black/30 transition-opacity duration-200',
+          visible ? 'opacity-100' : 'opacity-0'
+        )}
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l border-border shadow-xl flex flex-col">
+      <div
+        className={cn(
+          'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l border-border shadow-xl flex flex-col transition-transform duration-200 ease-out',
+          visible ? 'translate-x-0' : 'translate-x-full'
+        )}
+        onTransitionEnd={handleTransitionEnd}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-semibold text-foreground">
@@ -73,7 +102,7 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-muted text-muted-foreground"
+            className="p-1 rounded hover:bg-muted text-muted-foreground cursor-pointer"
             aria-label="Close"
           >
             <X size={16} />
