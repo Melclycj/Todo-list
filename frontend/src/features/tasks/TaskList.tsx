@@ -1,8 +1,11 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import {
   DndContext,
   closestCenter,
   DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
@@ -10,13 +13,14 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useQueryClient } from '@tanstack/react-query'
 import { TaskRow } from './TaskRow'
-import { TaskTableHeader, DRAG_HANDLE_WIDTH, ACTIONS_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH } from './TaskTableHeader'
+import { TaskTableHeader, GRIP_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH } from './TaskTableHeader'
 import { TaskEmptyState } from './TaskEmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useColumnResize } from '@/hooks/useColumnResize'
-import { useReorderTask, TASKS_QUERY_KEY } from '@/hooks/useTasks'
+import { useBatchReorder, TASKS_QUERY_KEY } from '@/hooks/useTasks'
 import { useDateGroups } from './useDateGroups'
 import type { Task, TaskFilterWindow } from '@/types/task'
+import type { ApiResponse } from '@/types/api'
 
 // Fixed width for the checkbox column shown in edit mode
 const CHECKBOX_COLUMN_WIDTH = 40
@@ -32,6 +36,12 @@ interface TaskListProps {
   isEditMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (id: string) => void
+  /**
+   * Signature representing the current filter identity (filter window,
+   * topic, search query, etc.). When it changes, every row is remounted
+   * so the fade-in animation replays even if the task set is identical.
+   */
+  filterKey?: string
 }
 
 export function TaskList({
@@ -45,19 +55,43 @@ export function TaskList({
   isEditMode,
   selectedIds,
   onToggleSelect,
+  filterKey,
 }: TaskListProps) {
   const { widths, startColumnDrag } = useColumnResize()
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const dateGroups = useDateGroups(tasks)
-  const { mutate: reorderTask } = useReorderTask()
+  const { mutate: batchReorder } = useBatchReorder()
   const queryClient = useQueryClient()
+
+  // Track filter identity. When filterKey changes, bump a counter that we
+  // prepend to each row's React key. That forces every row to unmount and
+  // remount, which replays the `animate-fadeInRow` CSS animation — even on
+  // rows whose task ids are unchanged between the old and new filter. This
+  // is the fix for the stale-DOM bug where persisting rows never re-faded.
+  //
+  // Writing refs during render is a documented React pattern for "derived
+  // values that should change only when some input changes" and avoids the
+  // extra render that useState+useEffect would cause.
+  const prevFilterKeyRef = useRef<string | undefined>(filterKey)
+  const animationCounterRef = useRef(0)
+  if (prevFilterKeyRef.current !== filterKey) {
+    animationCounterRef.current++
+    prevFilterKeyRef.current = filterKey
+  }
+  const animationKey = animationCounterRef.current
+
+  // Require 5px movement before activating drag — allows click to open context menu
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  })
+  const sensors = useSensors(pointerSensor)
 
   const totalWidth =
     Object.values(widths).reduce((sum, w) => sum + w, 0) +
-    (isEditMode ? CHECKBOX_COLUMN_WIDTH : DRAG_HANDLE_WIDTH + ACTIONS_COLUMN_WIDTH + EXPAND_COLUMN_WIDTH)
+    (isEditMode ? CHECKBOX_COLUMN_WIDTH : GRIP_COLUMN_WIDTH + EXPAND_COLUMN_WIDTH)
 
-  const totalColumns = isEditMode ? 6 : 8
+  const totalColumns = isEditMode ? 6 : 7
 
   const taskMap = useMemo(() => {
     const m = new Map<string, Task>()
@@ -97,37 +131,42 @@ export function TaskList({
     ids.splice(oldIndex, 1)
     ids.splice(newIndex, 0, movedTask.id)
 
-    // Optimistic update: update manual_order for all tasks in the group
-    queryClient.setQueriesData<Task[]>(
+    // Build batch payload: assign sequential manual_order to all tasks in group
+    const batchPayload = ids.map((id, i) => ({ id, manual_order: i }))
+
+    // Optimistic update: the query cache stores the full ApiResponse wrapper
+    // (useTasks unwraps it via `select` at read time), so we reach into
+    // `.data` when updating. Spreading `old` directly would throw
+    // `TypeError: old is not iterable` on the wrapper object.
+    queryClient.setQueriesData<ApiResponse<Task[]>>(
       { queryKey: [TASKS_QUERY_KEY] },
       (old) => {
-        if (!old) return old
-        const updated = [...old]
+        if (!old?.data) return old
+        const updated = [...old.data]
         for (let i = 0; i < ids.length; i++) {
           const idx = updated.findIndex((t) => t.id === ids[i])
           if (idx !== -1) updated[idx] = { ...updated[idx], manual_order: i }
         }
-        // Re-sort to reflect new order
         updated.sort((a, b) => {
           const da = a.due_date ?? '\uffff'
           const db = b.due_date ?? '\uffff'
           if (da !== db) return da < db ? -1 : 1
-          return (a.manual_order ?? 0) - (b.manual_order ?? 0)
+          const oa = a.manual_order ?? 0
+          const ob = b.manual_order ?? 0
+          if (oa !== ob) return oa - ob
+          return (a.created_at ?? '') < (b.created_at ?? '') ? -1 : 1
         })
-        return updated
+        return { ...old, data: updated }
       }
     )
 
-    // Persist: send the new order for the moved task
-    reorderTask(
-      { id: movedTask.id, payload: { manual_order: newIndex } },
-      {
-        onError: () => {
-          void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] })
-        },
-      }
-    )
-  }, [taskMap, dateGroups, queryClient, reorderTask])
+    // Persist: send all tasks in the group with their new manual_order
+    batchReorder(batchPayload, {
+      onError: () => {
+        void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] })
+      },
+    })
+  }, [taskMap, dateGroups, queryClient, batchReorder])
 
   if (isLoading) {
     return (
@@ -150,8 +189,12 @@ export function TaskList({
     )
   }
 
+  // Build a global stagger index across all date groups
+  let globalIndex = 0
+
   return (
     <DndContext
+      sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}
       onDragStart={handleDragStart}
@@ -173,20 +216,24 @@ export function TaskList({
                   items={groupIds}
                   strategy={verticalListSortingStrategy}
                 >
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      columnWidths={widths}
-                      isEditMode={isEditMode}
-                      isSelected={selectedIds?.has(task.id)}
-                      onToggleSelect={onToggleSelect}
-                      isExpanded={expandedTaskId === task.id}
-                      onToggleExpand={() => setExpandedTaskId((prev) => prev === task.id ? null : task.id)}
-                      totalColumns={totalColumns}
-                      isDragDisabled={isSingleItem}
-                    />
-                  ))}
+                  {group.tasks.map((task) => {
+                    const staggerIdx = globalIndex++
+                    return (
+                      <TaskRow
+                        key={`${animationKey}:${task.id}`}
+                        task={task}
+                        columnWidths={widths}
+                        isEditMode={isEditMode}
+                        isSelected={selectedIds?.has(task.id)}
+                        onToggleSelect={onToggleSelect}
+                        isExpanded={expandedTaskId === task.id}
+                        onToggleExpand={() => setExpandedTaskId((prev) => prev === task.id ? null : task.id)}
+                        totalColumns={totalColumns}
+                        isDragDisabled={isSingleItem}
+                        staggerIndex={staggerIdx}
+                      />
+                    )
+                  })}
                 </SortableContext>
               )
             })}
