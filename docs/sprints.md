@@ -52,6 +52,7 @@
 - NFR-05: Responsive layout for tablet + mobile
 - NFR-06: Reach 80% test coverage
 - Operations: DB performance indexes migration
+- Tech debt: Clear frontend lint errors (15 errors, mostly `react-hooks/set-state-in-effect` from React 19 rule; also `react-refresh/only-export-components`, `no-empty-object-type`, `no-explicit-any`). Wire `npm run lint` into CI so new debt can't sneak in.
 
 ---
 
