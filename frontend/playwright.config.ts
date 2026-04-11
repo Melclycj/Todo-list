@@ -1,13 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * E2E tests run against the full Docker Compose stack.
+ * E2E tests run against a running frontend.
  *
- * Start the stack first:
- *   docker compose up -d --build
- *
- * Then run tests:
+ * Local dev (default): the vite dev server on http://localhost:5173
+ *   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
  *   npx playwright test
+ *
+ * CI / prod build: the nginx container on http://localhost:8080
+ *   docker compose up -d --build
+ *   PLAYWRIGHT_BASE_URL=http://localhost:8080 npx playwright test
  */
 export default defineConfig({
   testDir: './e2e',
@@ -23,7 +25,7 @@ export default defineConfig({
   },
 
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8080',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'off',
