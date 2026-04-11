@@ -192,6 +192,7 @@ To Do → In Progress → Done
 - [x] Manual ordering persists after page refresh
 - [x] System prevents drag-and-drop across date groups (each group is an independent sortable context)
 - [x] Tasks with no due date are listed in a separate section below dated tasks
+- [x] During an active drag within a group, a 3px blue horizontal line marks the insertion edge; on drop, the task lands exactly where the line was shown immediately before release
 
 ---
 

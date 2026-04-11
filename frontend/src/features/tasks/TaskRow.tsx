@@ -241,9 +241,11 @@ interface TaskRowProps {
   isDragDisabled?: boolean
   /** Index for staggered fade-in animation on filter change */
   staggerIndex?: number
+  /** If set, render a 3px blue line on the top or bottom edge of the row */
+  dropIndicator?: 'above' | 'below' | null
 }
 
-export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled, staggerIndex }: TaskRowProps) {
+export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled, staggerIndex, dropIndicator }: TaskRowProps) {
   const {
     attributes,
     listeners,
@@ -307,6 +309,12 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           transform: CSS.Transform.toString(transform),
           transition,
           opacity: isDragging ? 0.4 : undefined,
+          boxShadow:
+            dropIndicator === 'above'
+              ? 'inset 0 3px 0 0 hsl(var(--primary))'
+              : dropIndicator === 'below'
+              ? 'inset 0 -3px 0 0 hsl(var(--primary))'
+              : undefined,
           ...(staggerIndex != null ? { animationDelay: `${staggerIndex * 40}ms` } : {}),
         }}
         className={cn(

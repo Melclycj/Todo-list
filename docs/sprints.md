@@ -22,8 +22,9 @@
 | 3 | Slide animations for drawer and sidebar, subtask expand/collapse animation | FR-13 | Done |
 | 4 | Status badge feedback, reminder crossfade, reduced-motion support | FR-13 | Done |
 | 5 | Visual polish: row hover, context menu opacity, search transition, resize handle, empty state fade, warm palette, overdue pulse | FR-13 | Done |
-| 6 | Fix: grip icon click vs drag distinction — click should open context menu, drag should reorder without opening menu | FR-08 | In Progress |
+| 6 | Fix: grip icon click vs drag distinction — click should open context menu, drag should reorder without opening menu | FR-08 | Done |
 | 7 | Verify: drag reorder persists after release (batch reorder endpoint wired up) | FR-08 | Done |
+| 8 | Drop indicator: 3px blue horizontal line at the insertion edge during drag reorder | FR-08 | Done |
 
 ### Retrospective
 

@@ -8,6 +8,7 @@ import {
   useSensors,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
@@ -60,6 +61,7 @@ export function TaskList({
   const { widths, startColumnDrag } = useColumnResize()
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [dropIndicator, setDropIndicator] = useState<{ overId: string; placement: 'above' | 'below' } | null>(null)
   const dateGroups = useDateGroups(tasks)
   const { mutate: batchReorder } = useBatchReorder()
   const queryClient = useQueryClient()
@@ -102,10 +104,46 @@ export function TaskList({
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setExpandedTaskId(null) // collapse any expanded row
     setActiveTask(taskMap.get(event.active.id as string) ?? null)
+    setDropIndicator(null)
   }, [taskMap])
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) {
+      setDropIndicator(null)
+      return
+    }
+    const movedTask = taskMap.get(active.id as string)
+    const overTask = taskMap.get(over.id as string)
+    if (!movedTask || !overTask) {
+      setDropIndicator(null)
+      return
+    }
+    const movedKey = movedTask.due_date ? movedTask.due_date.slice(0, 10) : '__no_date__'
+    const overKey = overTask.due_date ? overTask.due_date.slice(0, 10) : '__no_date__'
+    if (movedKey !== overKey) {
+      setDropIndicator(null)
+      return
+    }
+    const group = dateGroups.find((g) => g.key === movedKey)
+    if (!group) {
+      setDropIndicator(null)
+      return
+    }
+    const aIdx = group.tasks.findIndex((t) => t.id === movedTask.id)
+    const oIdx = group.tasks.findIndex((t) => t.id === overTask.id)
+    if (aIdx === -1 || oIdx === -1) {
+      setDropIndicator(null)
+      return
+    }
+    // Dragging down → insert after over-row (line on its bottom edge).
+    // Dragging up → insert before over-row (line on its top edge).
+    setDropIndicator({ overId: overTask.id, placement: aIdx < oIdx ? 'below' : 'above' })
+  }, [taskMap, dateGroups])
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveTask(null)
+    setDropIndicator(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -198,7 +236,9 @@ export function TaskList({
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => { setActiveTask(null); setDropIndicator(null) }}
     >
       <div className="border border-border rounded-lg overflow-auto h-full">
         <table
@@ -218,6 +258,8 @@ export function TaskList({
                 >
                   {group.tasks.map((task) => {
                     const staggerIdx = globalIndex++
+                    const indicator =
+                      dropIndicator?.overId === task.id ? dropIndicator.placement : null
                     return (
                       <TaskRow
                         key={`${animationKey}:${task.id}`}
@@ -231,6 +273,7 @@ export function TaskList({
                         totalColumns={totalColumns}
                         isDragDisabled={isSingleItem}
                         staggerIndex={staggerIdx}
+                        dropIndicator={indicator}
                       />
                     )
                   })}
