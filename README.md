@@ -50,6 +50,12 @@ Open **http://localhost:8080**
 
 ## Changelog
 
+### v1.2.1 (2026-04-12)
+
+- **Drop indicator**: 3px blue horizontal line at the insertion edge during drag reorder — appears above the target row when dragging up, below when dragging down
+- **Fix**: Drag reorder now actually persists — optimistic update no longer crashes on the React Query `ApiResponse` wrapper (`TypeError: old is not iterable`)
+- **Fix**: Grip icon click vs drag — click opens context menu, drag (≥5px) reorders without triggering the menu
+
 ### v1.2.0 (2026-04-10)
 
 - **Drag-and-drop reordering**: Tasks with the same due date can be reordered via drag handle; order persists across refreshes. Cross-date-group drags are structurally prevented.

@@ -33,12 +33,16 @@
 - @dnd-kit integrated cleanly with the existing table layout using per-date-group SortableContexts, preventing cross-group drags structurally rather than with prompts.
 - All 13 FR-13 micro-interaction criteria implemented in two focused tasks (animations + visual polish), each with its own commit.
 - prefers-reduced-motion support added globally in one CSS block — covers all current and future animations.
+- Drop indicator implemented as an inset `box-shadow` on the over-row — zero layout impact, moves naturally with the row's drag transform, and required no extra DOM nodes.
+- Chrome DevTools MCP paid off for debugging the silent reorder bug: pointer-event simulation + XHR interception + `unhandledrejection` patching isolated the `TypeError: old is not iterable` failure inside React Query's optimistic update that had been masked as "nothing happens".
 
 **Problems encountered:**
 - Subtask expand animation required refactoring SubtaskTable to support an `isInner` prop so the outer `<tr><td colSpan>` wrapper could be managed by TaskRow (needed for the CSS grid-template-rows trick on a table row).
 - Forgot to commit after Task 1 and Task 2 individually — batched them retroactively. Sprint workflow rule already covered this; need to follow it more strictly.
+- Reorder optimistic update crashed silently because React Query's cache holds the raw `ApiResponse<Task[]>` wrapper even though `useTasks` unwraps via `select`. `[...old]` on the wrapper threw inside React Query's internal `.map`, short-circuiting the mutation before the XHR was even fired. TypeScript did not catch this because the generic on `setQueriesData` is user-asserted. Fix: type as `ApiResponse<Task[]>` and reach into `.data`.
+- The Chrome DevTools MCP `drag` tool uses HTML5 drag events, which are incompatible with dnd-kit's PointerSensor — had to dispatch synthetic `PointerEvent`s via `evaluate_script` instead.
 
-**Spec deviations:** FR-08 criterion "System prompts the user if a drag-and-drop action would violate date-based ordering" was updated to "System prevents drag-and-drop across date groups" — structural prevention is better UX than a prompt.
+**Spec deviations:** FR-08 criterion "System prompts the user if a drag-and-drop action would violate date-based ordering" was updated to "System prevents drag-and-drop across date groups" — structural prevention is better UX than a prompt. A new FR-08 criterion was added mid-sprint for the drop indicator (3px blue line at insertion edge) based on user feedback during verification.
 
 ---
 

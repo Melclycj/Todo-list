@@ -66,7 +66,8 @@ All responses use this envelope:
 | PATCH | `/tasks/{id}` | Update task fields |
 | DELETE | `/tasks/{id}` | Delete task |
 | PATCH | `/tasks/{id}/status` | Update task status |
-| PATCH | `/tasks/{id}/order` | Update manual sort order |
+| PATCH | `/tasks/{id}/order` | Update manual sort order (single task) |
+| POST | `/tasks/reorder` | Batch update manual sort order (used by drag-and-drop) |
 
 **Filter query params for `GET /tasks`:**
 - `window`: `today` | `3days` | `week` | `all`
