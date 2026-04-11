@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  batchReorderTasks,
   bulkDeleteTasks,
   createTask,
   deleteTask,
@@ -88,6 +89,18 @@ export function useReorderTask() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: TaskOrderUpdatePayload }) =>
       updateTaskOrder(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] })
+    },
+  })
+}
+
+export function useBatchReorder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (tasks: { id: string; manual_order: number }[]) =>
+      batchReorderTasks(tasks),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] })
     },

@@ -89,6 +89,19 @@ class TaskRepository:
 
         return await self.get_by_id(task_id)
 
+    async def batch_update_order(
+        self,
+        updates: list[tuple[uuid.UUID, int]],
+    ) -> None:
+        """Update manual_order for multiple tasks in a single flush."""
+        now = datetime.now(tz=timezone.utc)
+        for task_id, order in updates:
+            await self._session.execute(
+                update(Task)
+                .where(Task.id == task_id)
+                .values(manual_order=order, updated_at=now)
+            )
+
     async def delete(self, task_id: uuid.UUID) -> None:
         task = await self.get_by_id(task_id)
         if task:
@@ -174,8 +187,12 @@ class TaskRepository:
         total_result = await self._session.execute(count_stmt)
         total = total_result.scalar_one()
 
-        # Sort: ascending due_date (nulls last), then manual_order
-        stmt = stmt.order_by(Task.due_date.asc().nulls_last(), Task.manual_order.asc().nulls_last())
+        # Sort: ascending due_date (nulls last), then manual_order, then created_at as stable tiebreaker
+        stmt = stmt.order_by(
+            Task.due_date.asc().nulls_last(),
+            Task.manual_order.asc().nulls_last(),
+            Task.created_at.asc(),
+        )
         stmt = stmt.offset((page - 1) * limit).limit(limit)
 
         result = await self._session.execute(stmt)

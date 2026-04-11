@@ -54,3 +54,10 @@ export async function bulkDeleteTasks(taskIds: string[]): Promise<ApiResponse<nu
   const { data } = await client.post<ApiResponse<null>>('/tasks/bulk-delete', { task_ids: taskIds })
   return data
 }
+
+export async function batchReorderTasks(
+  tasks: { id: string; manual_order: number }[]
+): Promise<ApiResponse<null>> {
+  const { data } = await client.post<ApiResponse<null>>('/tasks/reorder', { tasks })
+  return data
+}

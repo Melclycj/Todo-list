@@ -53,6 +53,15 @@ class TaskOrderUpdateRequest(BaseModel):
     manual_order: int
 
 
+class TaskBatchReorderItem(BaseModel):
+    id: uuid.UUID
+    manual_order: int
+
+
+class TaskBatchReorderRequest(BaseModel):
+    tasks: list[TaskBatchReorderItem] = Field(..., min_length=1, max_length=50)
+
+
 class TaskResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID

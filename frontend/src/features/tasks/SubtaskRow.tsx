@@ -5,7 +5,7 @@ import type { Subtask, TaskStatus } from '@/types/task'
 import type { ColumnKey } from '@/hooks/useColumnResize'
 import { TaskStatusBadge } from './TaskStatusBadge'
 import { EditableCell } from './TaskRow'
-import { DRAG_HANDLE_WIDTH, ACTIONS_COLUMN_WIDTH } from './TaskTableHeader'
+import { GRIP_COLUMN_WIDTH } from './TaskTableHeader'
 import { useUpdateSubtask, useDeleteSubtask } from '@/hooks/useSubtasks'
 import { toast } from 'sonner'
 
@@ -48,11 +48,8 @@ export function SubtaskRow({ subtask, columnWidths }: SubtaskRowProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Drag handle spacer */}
-      <td style={{ width: DRAG_HANDLE_WIDTH }} />
-
-      {/* Actions column — delete button */}
-      <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-1.5 pl-2 pr-0">
+      {/* Grip column — delete button for subtasks */}
+      <td style={{ width: GRIP_COLUMN_WIDTH }} className="py-1.5 pl-1 pr-0">
         {isHovered && (
           <button
             onClick={handleDelete}

@@ -29,7 +29,13 @@ export function TopicListPage() {
       </div>
 
       <div className="flex-1 overflow-hidden p-4">
-        <TaskList tasks={tasks} isLoading={isLoading} isTopicView onCreateTask={() => setDrawerOpen(true)} />
+        <TaskList
+          tasks={tasks}
+          isLoading={isLoading}
+          isTopicView
+          filterKey={`topic:${id ?? ''}`}
+          onCreateTask={() => setDrawerOpen(true)}
+        />
       </div>
 
       <TaskCreateDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />

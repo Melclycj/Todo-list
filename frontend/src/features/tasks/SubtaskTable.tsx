@@ -3,7 +3,7 @@ import type { Subtask } from '@/types/task'
 import type { ColumnKey } from '@/hooks/useColumnResize'
 import { SubtaskRow } from './SubtaskRow'
 import { useCreateSubtask } from '@/hooks/useSubtasks'
-import { DRAG_HANDLE_WIDTH, ACTIONS_COLUMN_WIDTH } from './TaskTableHeader'
+import { GRIP_COLUMN_WIDTH } from './TaskTableHeader'
 import { SUBTASK_WRAPPER_CLASS } from './subtask-styles'
 import { toast } from 'sonner'
 
@@ -76,8 +76,7 @@ export function SubtaskTable({ taskId, subtasks, columnWidths, totalColumns, pen
               {/* Ephemeral new subtask row — auto-focused, discard on blur if empty */}
               {pendingNewSubtask && (
                 <tr className="border-b border-border/30 bg-muted/10">
-                  <td style={{ width: DRAG_HANDLE_WIDTH }} />
-                  <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-1.5 pl-2 pr-0" />
+                  <td style={{ width: GRIP_COLUMN_WIDTH }} />
                   <td style={{ width: 24 }} />
                   <td style={{ width: columnWidths.status }} className="px-3 py-1.5">
                     <span className="text-xs text-muted-foreground/50">—</span>
@@ -111,8 +110,7 @@ export function SubtaskTable({ taskId, subtasks, columnWidths, totalColumns, pen
 
               {/* Persistent add subtask input row */}
               <tr className="border-b border-border/30">
-                <td style={{ width: DRAG_HANDLE_WIDTH }} />
-                <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-1.5 pl-2 pr-0" />
+                <td style={{ width: GRIP_COLUMN_WIDTH }} />
                 <td style={{ width: 24 }} />
                 <td style={{ width: columnWidths.status }} className="px-3 py-1.5" />
                 <td style={{ width: columnWidths.title }} className="px-3 py-1.5">

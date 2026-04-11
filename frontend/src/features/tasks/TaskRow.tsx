@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { format, parseISO } from 'date-fns'
-import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react'
+import { format, parseISO, isPast } from 'date-fns'
+import { ChevronRight, ChevronDown, AlertCircle } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
@@ -12,7 +12,7 @@ import { TaskTopicSelector } from './TaskTopicSelector'
 import { RowContextMenu, TASK_DELETE_ACTION, TASK_ADD_SUBTASK_ACTION } from './RowContextMenu'
 import { BulkDeleteDialog } from './BulkDeleteDialog'
 import { SubtaskTable } from './SubtaskTable'
-import { ACTIONS_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH, DRAG_HANDLE_WIDTH } from './TaskTableHeader'
+import { GRIP_COLUMN_WIDTH, EXPAND_COLUMN_WIDTH } from './TaskTableHeader'
 import { useUpdateTaskStatus, useUpdateTask, useDeleteTask } from '@/hooks/useTasks'
 import { toast } from 'sonner'
 
@@ -239,9 +239,11 @@ interface TaskRowProps {
   onToggleExpand?: () => void
   totalColumns?: number
   isDragDisabled?: boolean
+  /** Index for staggered fade-in animation on filter change */
+  staggerIndex?: number
 }
 
-export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled }: TaskRowProps) {
+export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled, staggerIndex }: TaskRowProps) {
   const {
     attributes,
     listeners,
@@ -295,6 +297,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
 
   const dueDateInputValue = task.due_date ? task.due_date.slice(0, 10) : ''
   const dueDateDisplay = task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : ''
+  const isOverdue = !isDone && !!task.due_date && isPast(parseISO(task.due_date))
 
   return (
     <>
@@ -304,8 +307,13 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           transform: CSS.Transform.toString(transform),
           transition,
           opacity: isDragging ? 0.4 : undefined,
+          ...(staggerIndex != null ? { animationDelay: `${staggerIndex * 40}ms` } : {}),
         }}
-        className={cn('group border-b border-border hover:bg-muted/40 transition-colors', isDone && 'opacity-60')}
+        className={cn(
+          'group border-b border-border hover:bg-muted/40 transition-colors',
+          isDone && 'opacity-60',
+          staggerIndex != null && 'animate-fadeInRow'
+        )}
       >
         {/* Checkbox (edit mode only) */}
         {isEditMode && (
@@ -319,30 +327,17 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
           </td>
         )}
 
-        {/* Drag handle + context menu (normal mode only) */}
+        {/* Grip icon — click opens menu, hold+drag reorders */}
         {!isEditMode && (
-          <td style={{ width: DRAG_HANDLE_WIDTH }} className="py-2 pl-1 pr-0">
-            {!isDragDisabled ? (
-              <button
-                {...attributes}
-                {...listeners}
-                className="opacity-0 group-hover:opacity-60 focus:opacity-60 transition-opacity p-0.5 cursor-grab active:cursor-grabbing touch-none"
-                aria-label="Drag to reorder"
-              >
-                <GripVertical size={12} className="text-muted-foreground" />
-              </button>
-            ) : null}
-          </td>
-        )}
-
-        {/* Context menu (normal mode only) */}
-        {!isEditMode && (
-          <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-2 pl-0 pr-0">
+          <td style={{ width: GRIP_COLUMN_WIDTH }} className="py-2 pl-2 pr-0">
             <RowContextMenu
               actions={[
                 TASK_DELETE_ACTION(() => setConfirmDelete(true)),
                 TASK_ADD_SUBTASK_ACTION(handleAddSubtask),
               ]}
+              dragAttributes={attributes}
+              dragListeners={listeners}
+              hidden={isDragDisabled}
             />
           </td>
         )}
@@ -408,14 +403,18 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
 
         {/* Due Date */}
         <td style={{ width: columnWidths.dueDate }} className="px-3 py-2">
-          <EditableCell
-            inputValue={dueDateInputValue}
-            displayText={dueDateDisplay}
-            placeholder="No date"
-            inputType="date"
-            popupEdit
-            onSave={(val) => saveField({ due_date: val ? `${val}T00:00:00` : null })}
-          />
+          <div className="flex items-center gap-1">
+            {isOverdue && <AlertCircle size={13} className="text-destructive animate-pulse flex-shrink-0" />}
+            <EditableCell
+              inputValue={dueDateInputValue}
+              displayText={dueDateDisplay}
+              placeholder="No date"
+              inputType="date"
+              popupEdit
+              onSave={(val) => saveField({ due_date: val ? `${val}T00:00:00` : null })}
+              textClassName={isOverdue ? 'text-destructive font-medium' : undefined}
+            />
+          </div>
         </td>
 
         {/* Topics */}

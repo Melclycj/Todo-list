@@ -128,6 +128,7 @@ export function TaskListPage() {
           filterWindow={filterWindow}
           isSearch={!!debouncedQuery}
           searchQuery={debouncedQuery}
+          filterKey={`window:${filterWindow}|q:${debouncedQuery}`}
           onCreateTask={() => setDrawerOpen(true)}
           isEditMode={isEditMode}
           selectedIds={selectedIds}
