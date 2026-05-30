@@ -314,6 +314,18 @@ To Do → In Progress → Done
 
 ---
 
+### FR-14: Strict Task Filter Validation
+**Description:** The `GET /tasks` `window` query parameter is currently typed as a plain string, so unrecognized values are silently ignored (the `TaskFilterParams` `Literal` is dead code). It must be validated so invalid values are rejected rather than returning a confusingly unfiltered list.
+
+**Success Criteria:**
+- [ ] `GET /tasks?window=<invalid>` returns a `422` validation error naming the allowed values, instead of unfiltered results
+- [ ] All four valid values (`today`, `3days`, `week`, `all`) work unchanged
+- [ ] Omitting `window` continues to behave as no window filter
+- [ ] The endpoint uses the `TaskFilterParams` `Literal` (no dead-code schema)
+- [ ] Tests cover each valid value plus at least one invalid value
+
+---
+
 ## Non-Functional Requirements
 
 ### NFR-01: Performance
@@ -378,3 +390,27 @@ To Do → In Progress → Done
 - [ ] Core modules have unit test coverage >= 80%
 - [x] New features can be added without modifying unrelated modules (loose coupling)
 - [x] A CI/CD pipeline runs all tests automatically before any release deployment
+
+---
+
+### NFR-07: Query Performance Indexes
+**Description:** The hot-path database indexes documented in `database.md` (under "Planned") do not exist in any migration, so high-frequency queries (task lists, scheduler scans) run unindexed. Consolidates the prior backlog item "Operations: DB performance indexes migration."
+
+**Success Criteria:**
+- [ ] An Alembic migration creates `ix_tasks_user_id_due_date`, `ix_tasks_user_id_archived`, `ix_tasks_status_archived`, `ix_task_topics_topic_id`, and the partial `ix_recurring_next_run` (`WHERE is_active = true`) — final set confirmed at implementation (standalone `ix_tasks_due_date` may be dropped as redundant with the composite)
+- [ ] The migration applies cleanly and `downgrade` drops the indexes
+- [ ] `database.md` moves these indexes from "Planned" to "Existing"
+- [ ] `EXPLAIN` on the task-list query and the recurring-scheduler query shows index scans (not seq scans) on a seeded dataset
+- [ ] The full test suite passes against the migrated schema
+
+---
+
+### NFR-08: Consistent API Error Envelope
+**Description:** `401` (auth), `422` (request validation), and `429` (rate limit) responses bypass the standard `{success, data, error}` envelope, returning framework-default shapes instead. They should be enveloped so clients can parse every error uniformly.
+
+**Success Criteria:**
+- [ ] `401` (`HTTPException`), `422` (`RequestValidationError`), and `429` (`RateLimitExceeded`) responses return the standard envelope (`success=false`, `data=null`, string `error`)
+- [ ] `422` field-level detail is surfaced in a consistent, documented shape rather than the raw FastAPI list
+- [ ] Existing enveloped errors (`400`/`403`/`404`/`500`) are unchanged
+- [ ] The frontend still performs silent refresh on `401` and renders validation errors correctly
+- [ ] `api-spec.md` Error Handling is updated; tests assert the envelope shape for `401`, `422`, and `429`

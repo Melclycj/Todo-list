@@ -12,6 +12,27 @@
 
 ## Current Sprint
 
+_No active sprint._
+
+---
+
+## Backlog (prioritized — next sprint picks from top)
+
+- FR-10: Google OpenID login
+- NFR-05: Responsive layout for tablet + mobile
+- NFR-06: Reach 80% test coverage
+- NFR-07: Query performance indexes migration (formerly "Operations: DB performance indexes")
+- Tech debt: Clear frontend lint errors (15 errors, mostly `react-hooks/set-state-in-effect` from React 19 rule; also `react-refresh/only-export-components`, `no-empty-object-type`, `no-explicit-any`). Wire `npm run lint` into CI so new debt can't sneak in.
+- FR-14: Strict task filter validation (reject invalid `window`)
+- NFR-08: Consistent API error envelope (401/422/429)
+
+---
+
+## Completed Sprints
+
+<details>
+<summary>Sprint 2 — Frontend polish: mobile layout, drag-and-drop, and micro-interactions (2026-04-10 to 2026-04-20)</summary>
+
 **Sprint 2** | Goal: Frontend polish — mobile layout, drag-and-drop, and micro-interactions
 **Started:** 2026-04-10
 
@@ -44,19 +65,7 @@
 
 **Spec deviations:** FR-08 criterion "System prompts the user if a drag-and-drop action would violate date-based ordering" was updated to "System prevents drag-and-drop across date groups" — structural prevention is better UX than a prompt. A new FR-08 criterion was added mid-sprint for the drop indicator (3px blue line at insertion edge) based on user feedback during verification.
 
----
-
-## Backlog (prioritized — next sprint picks from top)
-
-- FR-10: Google OpenID login
-- NFR-05: Responsive layout for tablet + mobile
-- NFR-06: Reach 80% test coverage
-- Operations: DB performance indexes migration
-- Tech debt: Clear frontend lint errors (15 errors, mostly `react-hooks/set-state-in-effect` from React 19 rule; also `react-refresh/only-export-components`, `no-empty-object-type`, `no-explicit-any`). Wire `npm run lint` into CI so new debt can't sneak in.
-
----
-
-## Completed Sprints
+</details>
 
 <details>
 <summary>Sprint 1 — Subtasks, context menu, and recurring task bug fix (2026-04-05 to 2026-04-10)</summary>
