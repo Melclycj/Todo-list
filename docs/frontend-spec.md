@@ -44,16 +44,18 @@ No global client-side store (no Redux, no Zustand).
 - Interceptors attach access token to every request
 - On `401`: silent token refresh, then retry once
 - On failed refresh: redirect to login
-- No component may call `fetch` or `axios` directly
+- No component may call `fetch` or `axios` directly (the reminder SSE `EventSource` connection is the sole exception — see Reminder section)
 
 ---
 
 ## Reminder (SSE)
 
-- `GET /api/v1/reminder/stream` — Server-Sent Events, no polling
+- `GET /api/v1/reminder/stream` — Server-Sent Events; live push with a polling fallback only in degraded mode (see below)
 - Server pushes on: task status change, 6pm/1am time boundaries
 - Frontend opens SSE on mount, fetches initial via `GET /api/v1/reminder`
-- On disconnect: browser EventSource retries with backoff
+- **Auth:** `EventSource` cannot set headers, so the in-memory access token is passed as a `?token=` query param on the stream URL (with `withCredentials` for the refresh cookie). This is the one API call that does not go through the Axios client.
+- **Reconnection:** on error the client closes the stream and runs its own exponential backoff (`1s × 2^n`, up to 3 retries); native `EventSource` auto-retry is disabled
+- **Fallback:** after 3 failed retries it stops reconnecting and polls `GET /reminder` every 60s instead
 
 ---
 
@@ -67,5 +69,6 @@ No global client-side store (no Redux, no Zustand).
 | `/topics/:id` | Tasks filtered by topic |
 | `/recurring` | Recurring templates |
 | `/archive` | Archive view |
+| `*` | Any unmatched path redirects to `/` |
 
 Filter window is managed via local state + localStorage, not URL params.
