@@ -25,6 +25,31 @@ Reference these docs when working on specific areas. Do not load all at once —
 3. **API-first**: Every feature is an API endpoint first. Frontend is built on top.
 4. **Immutability**: Prefer new objects over mutation.
 
+## Workflow: Sprint-first, GSD as toolbox
+
+This project's project-management spine is the **Sprint workflow** (`docs/sprints.md` + `docs/requirements.md` + the `/sprint` skill), per `.claude/rules/common/sprint-workflow.md`. GSD is used **only as a per-task execution/quality toolbox — never as the project manager.** This project-level rule **overrides** any global "GSD-first for non-trivial work" default.
+
+**Sprint owns** (do not duplicate anywhere else): scope & backlog (`docs/sprints.md`), requirements with SMART success criteria (`docs/requirements.md`), lifecycle (`/sprint start|stop|archive`), and commit-per-task. `docs/sprints.md` is the single source of truth for what/when.
+
+**GSD = toolbox.** Inside a single sprint task you MAY reach for standalone GSD tools/agents:
+
+| Need | GSD tool |
+|------|----------|
+| Refresh codebase reference | `/gsd-map-codebase` → writes `.planning/codebase/` |
+| Implement a small / chunky task | `/gsd-fast` · `/gsd-quick` · `/gsd-plan-phase` |
+| Generate tests from success criteria | `/gsd-add-tests` |
+| Systematic debugging (persistent state) | `/gsd-debug` |
+| Pre-commit code review | `/gsd-code-review` |
+| Security-sensitive task (auth / data) | `/gsd-secure-phase` (+ AppSec) |
+| Fix `docs/` drift vs code | `/gsd-docs-update` |
+| Feed the `/sprint stop` retrospective | `/gsd-extract-learnings` |
+
+**GSD is the execution layer; "Done" is decided one level up.** GSD tools only *produce work* — including their own verdicts (`/gsd-verify-work`, `/gsd-code-review`, `gsd-ui-checker` BLOCK/FLAG/PASS). None of them completes a task. A task is Done **only** through the sprint **Task Completion gate** in `.claude/rules/common/sprint-workflow.md` — the single authority for what "Done" means and how GSD verdicts (advisory) and tool-generated tests (must verify the success criteria) feed it. The governing rule lives there, not here.
+
+**NEVER run** (these make GSD seize project management and fight the sprint spine): `/gsd-new-project`, `/gsd-new-milestone`, roadmap commands, `/gsd-ship`. The release path is `/sprint stop` + CI (PR merge to `main`).
+
+**No competing PM scaffold.** `.planning/` is scratch only (e.g. `.planning/codebase/`). Never create `.planning/PROJECT.md` / `ROADMAP.md` / `STATE.md` as a competing source of truth — `docs/sprints.md` is authoritative.
+
 ## Common Commands
 
 ```bash

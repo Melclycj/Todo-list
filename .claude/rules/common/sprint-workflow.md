@@ -31,6 +31,8 @@ For each task in the sprint scope:
 
 Do NOT mark a task Done without ALL success criteria verified, passing tests, **and a commit**.
 
+This gate is the **sole authority for "Done."** No tool's verdict substitutes for it: a `/gsd-code-review`, `/gsd-verify-work`, or `gsd-ui-checker` result — or any other reviewer/verifier output — is **advisory input** to the criteria check above, never a replacement for it. A task is Done only when its success criteria are ticked, the criteria tests are green, and the work is committed. Tests count toward this gate only when they are the ones that verify the success criteria (step 2); if you generate tests with a tool (e.g. `/gsd-add-tests`), point them at those criteria — a separate suite passing does not satisfy this gate.
+
 ## Sprint Lifecycle
 
 Sprint state transitions are managed via the `/sprint` skill:
