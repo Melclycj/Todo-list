@@ -23,6 +23,8 @@
 | 4 | Accessibility baseline — aria-labels, keyboard drag, drawer role+Esc+focus, archive keyboard, contrast token, focus rings (full focus-trap + axe pass deferred) | NFR-09 | Waiting for User |
 
 > Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
+>
+> **CI verification (added via QA, advisory):** FR-16, FR-17 status-undo + subtask-confirm, FR-15 stream-200, and NFR-09 axe (0 serious/critical on login/tasks/archive/recurring) now have Playwright E2E that run in CI on push (`.github/workflows/ci.yml` `e2e` job). Pushing `dev` verifies them without manual testing. **Exceptions still needing a human:** FR-17 **reorder-undo** (keyboard-drag E2E would be flaky — left manual) and the NFR-09 axe result may surface real violations (honest signal, not yet known to be green).
 
 ---
 
