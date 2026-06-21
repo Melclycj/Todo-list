@@ -19,7 +19,7 @@ export function TaskEditToolbar({
 }: TaskEditToolbarProps) {
   if (!isEditMode) {
     return (
-      <Button variant="outline" size="sm" onClick={onEnterEditMode} title="Edit tasks">
+      <Button variant="outline" size="sm" onClick={onEnterEditMode} title="Edit tasks" aria-label="Edit tasks">
         <Pencil size={14} />
       </Button>
     )
@@ -33,11 +33,12 @@ export function TaskEditToolbar({
         onClick={onDelete}
         disabled={selectedCount === 0}
         title="Delete selected"
+        aria-label="Delete selected"
         className={cn(selectedCount === 0 && 'opacity-50 cursor-not-allowed')}
       >
         <Trash2 size={14} />
       </Button>
-      <Button variant="outline" size="sm" onClick={onExitEditMode} title="Done">
+      <Button variant="outline" size="sm" onClick={onExitEditMode} title="Done" aria-label="Done">
         <Check size={14} />
       </Button>
     </div>

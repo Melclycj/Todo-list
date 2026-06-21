@@ -95,7 +95,7 @@ export function RowContextMenu({ actions, dragAttributes, dragListeners, hidden 
         {...(dragListeners as Record<string, any>)}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
-        className={`opacity-0 group-hover:opacity-60 focus:opacity-60 transition-opacity p-1 ${cursorClass} rounded hover:bg-accent/40`}
+        className={`opacity-0 group-hover:opacity-60 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-opacity p-1 ${cursorClass} rounded hover:bg-accent/40`}
         aria-label={isDraggable ? 'Actions and reorder' : 'Actions'}
         aria-haspopup="menu"
         aria-expanded={open}

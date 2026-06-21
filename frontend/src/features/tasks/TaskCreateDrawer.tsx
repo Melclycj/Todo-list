@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TaskForm, type TaskFormValues } from './TaskForm'
@@ -16,6 +16,7 @@ interface TaskCreateDrawerProps {
 export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskCreateDrawerProps) {
   const { mutate: createTask, isPending: isCreatingTask } = useCreateTask()
   const { mutate: createTemplate, isPending: isCreatingTemplate } = useCreateRecurringTemplate()
+  const drawerRef = useRef<HTMLDivElement>(null)
 
   // Keep the drawer mounted during exit animation
   const [mounted, setMounted] = useState(false)
@@ -30,6 +31,16 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
       setVisible(false)
     }
   }, [open])
+
+  // Move focus to first focusable element when drawer opens
+  useEffect(() => {
+    if (visible && drawerRef.current) {
+      const first = drawerRef.current.querySelector<HTMLElement>(
+        'input, textarea, select, button, [tabindex]:not([tabindex="-1"])'
+      )
+      first?.focus()
+    }
+  }, [visible])
 
   function handleTransitionEnd() {
     if (!visible) setMounted(false)
@@ -89,20 +100,25 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
 
       {/* Drawer */}
       <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-drawer-title"
         className={cn(
           'fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l border-border shadow-xl flex flex-col transition-transform duration-200 ease-out',
           visible ? 'translate-x-0' : 'translate-x-full'
         )}
         onTransitionEnd={handleTransitionEnd}
+        onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">
+          <h2 id="create-drawer-title" className="font-semibold text-foreground">
             {recurringOnly ? 'New Recurring Task' : 'New Task'}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-muted text-muted-foreground cursor-pointer"
+            className="p-1 rounded hover:bg-muted text-muted-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Close"
           >
             <X size={16} />

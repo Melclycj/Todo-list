@@ -489,13 +489,13 @@ To Do → In Progress → Done
 **Description:** Multiple WCAG 2.2 gaps surfaced in the 2026-06 UI audit: icon-only buttons expose only a `title` attribute (not reliably announced by screen readers), drag-to-reorder has no keyboard alternative, the custom task create-drawer has no focus trap, and several custom interactive elements (`<div onClick>`) are not keyboard-operable. (A contrast review found `--primary` ≈5.17:1 and `--muted-foreground` ≈4.9:1 both **pass** AA on white; only `--muted-foreground` over `bg-muted` is marginal.)
 
 **Success Criteria:**
-- [ ] Every icon-only button has an `aria-label`
-- [ ] Drag-to-reorder is operable by keyboard (dnd-kit `KeyboardSensor` wired with `sortableKeyboardCoordinates`)
-- [ ] The task create-drawer has `role="dialog"`, `aria-modal`, a focus trap, and Esc-to-close
-- [ ] Archive expand/collapse and all custom interactive elements are keyboard-focusable and operable, with a visible focus indicator
-- [ ] Task status is distinguishable without relying on color alone
-- [ ] axe-core reports 0 serious/critical violations on each surface at 320, 768, and 1440px
-- [ ] Any token measured below 4.5:1 on its actual background (i.e. `--muted-foreground` on `bg-muted`) is darkened to pass
+- [x] Every icon-only button has an `aria-label`
+- [x] Drag-to-reorder is operable by keyboard (dnd-kit `KeyboardSensor` wired with `sortableKeyboardCoordinates`)
+- [ ] The task create-drawer has `role="dialog"`, `aria-modal`, a focus trap, and Esc-to-close — _partial: role/aria-modal/aria-labelledby + Esc + focus-on-open done; full Tab-cycle trap deferred_
+- [ ] Archive expand/collapse and all custom interactive elements are keyboard-focusable and operable, with a visible focus indicator — _archive expand + grip + restore done; remaining custom controls (e.g. topic-selector popover trigger) pending_
+- [x] Task status is distinguishable without relying on color alone
+- [ ] axe-core reports 0 serious/critical violations on each surface at 320, 768, and 1440px — _needs running app (CI / in-browser)_
+- [x] Any token measured below 4.5:1 on its actual background (i.e. `--muted-foreground` on `bg-muted`) is darkened to pass
 
 ---
 

@@ -35,7 +35,10 @@ function ArchiveRow({ task, isExpanded, onToggleExpand }: ArchiveRowProps) {
           'group flex items-center gap-3 px-4 py-3 hover:bg-muted/30',
           hasSubtasks && 'cursor-pointer'
         )}
+        role={hasSubtasks ? 'button' : undefined}
+        tabIndex={hasSubtasks ? 0 : undefined}
         onClick={hasSubtasks ? onToggleExpand : undefined}
+        onKeyDown={hasSubtasks ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleExpand() } } : undefined}
       >
         {/* Expand/collapse indicator */}
         <div className="w-4 flex-shrink-0">
@@ -67,7 +70,7 @@ function ArchiveRow({ task, isExpanded, onToggleExpand }: ArchiveRowProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="opacity-0 group-hover:opacity-100 transition-opacity gap-1.5 text-muted-foreground"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity gap-1.5 text-muted-foreground"
           onClick={(e) => { e.stopPropagation(); handleRestore() }}
           disabled={isPending}
         >

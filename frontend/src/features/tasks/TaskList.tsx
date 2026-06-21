@@ -3,6 +3,7 @@ import {
   DndContext,
   closestCenter,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -10,7 +11,7 @@ import {
   type DragEndEvent,
   type DragOverEvent,
 } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useQueryClient } from '@tanstack/react-query'
 import { TaskRow } from './TaskRow'
@@ -88,7 +89,10 @@ export function TaskList({
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 5 },
   })
-  const sensors = useSensors(pointerSensor)
+  const keyboardSensor = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  })
+  const sensors = useSensors(pointerSensor, keyboardSensor)
 
   const totalWidth =
     Object.values(widths).reduce((sum, w) => sum + w, 0) +

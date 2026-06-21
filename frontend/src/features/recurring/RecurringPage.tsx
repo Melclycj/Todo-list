@@ -513,7 +513,7 @@ export function RecurringPage() {
           </Button>
           {/* Edit mode toolbar — mirrors TaskEditToolbar in Active Tasks */}
           {!isEditMode ? (
-            <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} title="Select to stop">
+            <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} title="Select to stop" aria-label="Select to stop">
               <Pencil size={14} />
             </Button>
           ) : (
@@ -524,11 +524,12 @@ export function RecurringPage() {
                 onClick={() => setConfirmStop(true)}
                 disabled={selectedIds.size === 0}
                 title="Stop selected"
+                aria-label="Stop selected"
                 className={cn(selectedIds.size === 0 && 'opacity-50 cursor-not-allowed')}
               >
                 <Trash2 size={14} />
               </Button>
-              <Button variant="outline" size="sm" onClick={exitEditMode} title="Done">
+              <Button variant="outline" size="sm" onClick={exitEditMode} title="Done" aria-label="Done">
                 <Check size={14} />
               </Button>
             </div>
