@@ -352,14 +352,16 @@ To Do → In Progress → Done
 ---
 
 ### FR-17: Undo & Recovery for Reversible Actions
-**Description:** The app has no undo for any action — delete task, delete topic, status change, drag-reorder, and subtask delete are all irreversible from the UI, and users are never told that deleted tasks are recoverable in the Archive. Subtask delete additionally fires immediately with no confirmation, inconsistent with task delete (which confirms).
+**Description:** Reversible actions (status change, drag-reorder) offer no undo, and subtask delete fires immediately on a hover-only trash icon with no confirmation — easy accidental data loss.
+
+> **Correction (2026-06-21):** task delete and topic delete are **permanent hard deletes** (verified in `task_repository.delete` / `subtask_repository.delete` — `session.delete(...)`); they do **not** go to the Archive. The 4am Archive only holds auto-archived *Done* tasks. Both already show an accurate "cannot be undone" confirmation, so there is nothing to "recover" and no false Archive promise should be added. True undo-of-delete would require a backend soft-delete + restore endpoint — tracked separately if wanted, out of scope here.
 
 **Success Criteria:**
-- [ ] Deleting a task surfaces a message stating it can be restored from the Archive
 - [ ] Status change and drag-reorder each present an Undo affordance that restores the single immediately-preceding state of that entity
-- [ ] Subtask delete gains a confirmation dialog matching the task-delete flow (or an Undo toast) — one explicit recovery affordance
-- [ ] Topic delete presents an Undo affordance or a confirmation, consistent with task delete
-- [ ] E2E tests verify each action → recover → prior state restored
+- [ ] Subtask delete gains a confirmation dialog (matching the task-delete confirm) before the subtask is removed
+- [x] Task delete keeps a confirmation that accurately states the deletion is permanent (no false "recoverable" claim)
+- [x] Topic delete shows a confirmation consistent with task delete
+- [ ] E2E tests verify status-undo and reorder-undo restore prior state, and that subtask delete requires confirmation
 
 ---
 

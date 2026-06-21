@@ -22,6 +22,7 @@ import { useBatchReorder, TASKS_QUERY_KEY } from '@/hooks/useTasks'
 import { useDateGroups } from './useDateGroups'
 import type { Task, TaskFilterWindow } from '@/types/task'
 import type { ApiResponse } from '@/types/api'
+import { toast } from 'sonner'
 
 // Fixed width for the checkbox column shown in edit mode
 const CHECKBOX_COLUMN_WIDTH = 40
@@ -141,6 +142,47 @@ export function TaskList({
     setDropIndicator({ overId: overTask.id, placement: aIdx < oIdx ? 'below' : 'above' })
   }, [taskMap, dateGroups])
 
+  const applyOrder = useCallback(
+    (orderedIds: string[]) => {
+      // Optimistic update: the query cache stores the full ApiResponse wrapper
+      // (useTasks unwraps it via `select` at read time), so we reach into
+      // `.data` when updating. Spreading `old` directly would throw
+      // `TypeError: old is not iterable` on the wrapper object.
+      queryClient.setQueriesData<ApiResponse<Task[]>>(
+        { queryKey: [TASKS_QUERY_KEY] },
+        (old) => {
+          if (!old?.data) return old
+          const updated = [...old.data]
+          for (let i = 0; i < orderedIds.length; i++) {
+            const idx = updated.findIndex((t) => t.id === orderedIds[i])
+            if (idx !== -1) updated[idx] = { ...updated[idx], manual_order: i }
+          }
+          updated.sort((a, b) => {
+            const da = a.due_date ?? '\uffff'
+            const db = b.due_date ?? '\uffff'
+            if (da !== db) return da < db ? -1 : 1
+            const oa = a.manual_order ?? 0
+            const ob = b.manual_order ?? 0
+            if (oa !== ob) return oa - ob
+            return (a.created_at ?? '') < (b.created_at ?? '') ? -1 : 1
+          })
+          return { ...old, data: updated }
+        }
+      )
+
+      // Persist: send all tasks in the group with their new manual_order
+      batchReorder(
+        orderedIds.map((id, i) => ({ id, manual_order: i })),
+        {
+          onError: () => {
+            void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] })
+          },
+        }
+      )
+    },
+    [queryClient, batchReorder]
+  )
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveTask(null)
     setDropIndicator(null)
@@ -159,52 +201,28 @@ export function TaskList({
     const group = dateGroups.find((g) => g.key === movedKey)
     if (!group) return
 
-    // Compute new order: reorder the group array
     const ids = group.tasks.map((t) => t.id)
     const oldIndex = ids.indexOf(movedTask.id)
     const newIndex = ids.indexOf(overTask.id)
     if (oldIndex === -1 || newIndex === -1) return
 
-    // Reorder
-    ids.splice(oldIndex, 1)
-    ids.splice(newIndex, 0, movedTask.id)
+    // Snapshot the pre-reorder order so the move can be undone.
+    const prevOrder = [...ids]
 
-    // Build batch payload: assign sequential manual_order to all tasks in group
-    const batchPayload = ids.map((id, i) => ({ id, manual_order: i }))
+    // Compute the new order
+    const newOrder = [...ids]
+    newOrder.splice(oldIndex, 1)
+    newOrder.splice(newIndex, 0, movedTask.id)
 
-    // Optimistic update: the query cache stores the full ApiResponse wrapper
-    // (useTasks unwraps it via `select` at read time), so we reach into
-    // `.data` when updating. Spreading `old` directly would throw
-    // `TypeError: old is not iterable` on the wrapper object.
-    queryClient.setQueriesData<ApiResponse<Task[]>>(
-      { queryKey: [TASKS_QUERY_KEY] },
-      (old) => {
-        if (!old?.data) return old
-        const updated = [...old.data]
-        for (let i = 0; i < ids.length; i++) {
-          const idx = updated.findIndex((t) => t.id === ids[i])
-          if (idx !== -1) updated[idx] = { ...updated[idx], manual_order: i }
-        }
-        updated.sort((a, b) => {
-          const da = a.due_date ?? '\uffff'
-          const db = b.due_date ?? '\uffff'
-          if (da !== db) return da < db ? -1 : 1
-          const oa = a.manual_order ?? 0
-          const ob = b.manual_order ?? 0
-          if (oa !== ob) return oa - ob
-          return (a.created_at ?? '') < (b.created_at ?? '') ? -1 : 1
-        })
-        return { ...old, data: updated }
-      }
-    )
+    applyOrder(newOrder)
 
-    // Persist: send all tasks in the group with their new manual_order
-    batchReorder(batchPayload, {
-      onError: () => {
-        void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_KEY] })
+    toast('Tasks reordered', {
+      action: {
+        label: 'Undo',
+        onClick: () => applyOrder(prevOrder),
       },
     })
-  }, [taskMap, dateGroups, queryClient, batchReorder])
+  }, [taskMap, dateGroups, applyOrder])
 
   if (isLoading) {
     return (

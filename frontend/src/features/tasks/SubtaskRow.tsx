@@ -7,6 +7,14 @@ import { TaskStatusBadge } from './TaskStatusBadge'
 import { EditableCell } from './TaskRow'
 import { GRIP_COLUMN_WIDTH } from './TaskTableHeader'
 import { useUpdateSubtask, useDeleteSubtask } from '@/hooks/useSubtasks'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
 function nextSubtaskStatus(current: TaskStatus): TaskStatus {
@@ -22,8 +30,9 @@ interface SubtaskRowProps {
 
 export function SubtaskRow({ subtask, columnWidths }: SubtaskRowProps) {
   const { mutate: updateSubtask } = useUpdateSubtask(subtask.task_id)
-  const { mutate: deleteSubtask } = useDeleteSubtask(subtask.task_id)
+  const { mutate: deleteSubtask, isPending: isDeleting } = useDeleteSubtask(subtask.task_id)
   const [isHovered, setIsHovered] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const isDone = subtask.status === 'done'
 
   function handleStatusClick(e: React.MouseEvent) {
@@ -35,9 +44,14 @@ export function SubtaskRow({ subtask, columnWidths }: SubtaskRowProps) {
     )
   }
 
-  function handleDelete(e: React.MouseEvent) {
+  function handleDeleteClick(e: React.MouseEvent) {
     e.stopPropagation()
+    setConfirmDelete(true)
+  }
+
+  function confirmDeleteSubtask() {
     deleteSubtask(subtask.id, {
+      onSuccess: () => setConfirmDelete(false),
       onError: () => toast.error('Failed to delete subtask'),
     })
   }
@@ -52,13 +66,33 @@ export function SubtaskRow({ subtask, columnWidths }: SubtaskRowProps) {
       <td style={{ width: GRIP_COLUMN_WIDTH }} className="py-1.5 pl-1 pr-0">
         {isHovered && (
           <button
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
             className="p-0.5 rounded hover:bg-destructive/10 transition-colors"
             aria-label="Delete subtask"
           >
             <Trash2 size={12} className="text-muted-foreground hover:text-destructive" />
           </button>
         )}
+        <Dialog open={confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(false) }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete subtask?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Delete{' '}
+              <span className="font-medium text-foreground">{subtask.title || 'this subtask'}</span>?
+              This can&apos;t be undone.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" size="sm" onClick={confirmDeleteSubtask} disabled={isDeleting}>
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </td>
 
       {/* Expand column spacer */}
