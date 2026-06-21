@@ -45,7 +45,9 @@ test.describe('FR-17 subtask delete confirm', () => {
 
     // 6. Hover the subtask row to reveal the delete button
     //    The delete button is only rendered when isHovered === true
-    const subtaskRow = page.locator('tr', { hasText: subtaskTitle })
+    // The subtask title matches both the inner subtask <tr> and its outer
+    // colSpan wrapper <tr>; .last() is the nested subtask row.
+    const subtaskRow = page.locator('tr', { hasText: subtaskTitle }).last()
     await subtaskRow.hover()
 
     // 7. Click the "Delete subtask" button (aria-label)
