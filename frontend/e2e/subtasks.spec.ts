@@ -71,7 +71,8 @@ test.describe('FR-17 subtask delete confirm', () => {
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
 
-    // Wait for optimistic removal
-    await expect(page.getByText(subtaskTitle)).not.toBeVisible()
+    // The deleted subtask's row is gone. Count rows (not getByText) — the
+    // confirm dialog briefly still contains the subtask title while it closes.
+    await expect(page.locator('tr', { hasText: subtaskTitle })).toHaveCount(0)
   })
 })
