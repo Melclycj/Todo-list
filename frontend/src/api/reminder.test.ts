@@ -78,5 +78,57 @@ describe('reminder api', () => {
       handle.close()
       vi.unstubAllGlobals()
     })
+
+    // A fetch whose stream yields the given SSE chunks then closes.
+    function streamingFetch(chunks: string[]) {
+      const encoder = new TextEncoder()
+      let i = 0
+      return vi.fn().mockResolvedValue({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: () =>
+              i < chunks.length
+                ? Promise.resolve({ value: encoder.encode(chunks[i++]), done: false })
+                : Promise.resolve({ value: undefined, done: true }),
+          }),
+        },
+      })
+    }
+
+    it('parses data: frames, ignores keep-alive comments, reports close via onError', async () => {
+      vi.mocked(getAccessToken).mockReturnValue('t')
+      vi.stubGlobal(
+        'fetch',
+        streamingFetch([
+          'data: {"message":"Hello"}\n\n',
+          ': keep-alive\n\n',
+          'data: plain line\n\n',
+        ])
+      )
+
+      const messages: string[] = []
+      await new Promise<void>((resolve) => {
+        openReminderStream({
+          onMessage: (m) => messages.push(m),
+          onError: () => resolve(), // fires when the reader reports done
+        })
+      })
+
+      expect(messages).toEqual(['{"message":"Hello"}', 'plain line'])
+      vi.unstubAllGlobals()
+    })
+
+    it('calls onError when the response is not ok (e.g. 401)', async () => {
+      vi.mocked(getAccessToken).mockReturnValue('t')
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401, body: null }))
+
+      const err = await new Promise<unknown>((resolve) => {
+        openReminderStream({ onMessage: () => {}, onError: (e) => resolve(e) })
+      })
+
+      expect(err).toBeInstanceOf(Error)
+      vi.unstubAllGlobals()
+    })
   })
 })
