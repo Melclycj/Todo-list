@@ -68,4 +68,11 @@ test.describe('Task CRUD', () => {
   test('empty state is shown when no tasks exist', async ({ page }) => {
     await expect(page.getByText('No tasks yet')).toBeVisible()
   })
+
+  test('no non-functional view-mode control is present (FR-16)', async ({ page }) => {
+    // The dead "Task Board" view option was removed entirely; only the
+    // implemented table view exists, so there is no view-mode selector.
+    await expect(page.getByRole('combobox', { name: 'View mode' })).toHaveCount(0)
+    await expect(page.getByText('Task Board')).toHaveCount(0)
+  })
 })

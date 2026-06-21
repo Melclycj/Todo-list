@@ -18,7 +18,7 @@
 | # | Task | Req | Status |
 |---|------|-----|--------|
 | 1 | Fix SSE reminder auth — stream no longer 401s, real-time works, token out of the URL (**routes through AppSec**) | FR-15 | To Do |
-| 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | To Do |
+| 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
 | 3 | Undo + recovery for delete / status / reorder / subtask; tell users deletes go to Archive | FR-17 | To Do |
 | 4 | Accessibility baseline — aria-labels, keyboard drag, drawer focus trap, keyboard-operable controls, axe-clean | NFR-09 | To Do |
 

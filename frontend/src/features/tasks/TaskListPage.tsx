@@ -5,12 +5,11 @@ import { TaskList } from './TaskList'
 import { TaskSearchBar } from './TaskSearchBar'
 import { TaskCreateDrawer } from './TaskCreateDrawer'
 import { TaskFilterDropdown } from './TaskFilterDropdown'
-import { ViewModeDropdown } from './ViewModeDropdown'
 import { TaskEditToolbar } from './TaskEditToolbar'
 import { BulkDeleteDialog } from './BulkDeleteDialog'
 import { useTasks, useBulkDeleteTasks } from '@/hooks/useTasks'
 import { useDebounce } from '@/hooks/useDebounce'
-import type { TaskFilterWindow, ViewMode } from '@/types/task'
+import type { TaskFilterWindow } from '@/types/task'
 import { toast } from 'sonner'
 
 const FILTER_LABELS: Record<TaskFilterWindow, string> = {
@@ -21,7 +20,6 @@ const FILTER_LABELS: Record<TaskFilterWindow, string> = {
 }
 
 const STORAGE_KEY = 'taskFilterWindow'
-const VIEW_MODE_KEY = 'taskViewMode'
 
 function readSavedFilter(): TaskFilterWindow {
   const saved = localStorage.getItem(STORAGE_KEY)
@@ -29,15 +27,8 @@ function readSavedFilter(): TaskFilterWindow {
   return 'all'
 }
 
-function readSavedViewMode(): ViewMode {
-  const saved = localStorage.getItem(VIEW_MODE_KEY)
-  if (saved === 'table' || saved === 'board') return saved
-  return 'table'
-}
-
 export function TaskListPage() {
   const [filterWindow, setFilterWindow] = useState<TaskFilterWindow>(readSavedFilter)
-  const [viewMode, setViewMode] = useState<ViewMode>(readSavedViewMode)
   const [searchQuery, setSearchQuery] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -60,11 +51,6 @@ export function TaskListPage() {
   function handleFilterChange(value: TaskFilterWindow) {
     setFilterWindow(value)
     localStorage.setItem(STORAGE_KEY, value)
-  }
-
-  function handleViewModeChange(value: ViewMode) {
-    setViewMode(value)
-    localStorage.setItem(VIEW_MODE_KEY, value)
   }
 
   function toggleSelect(id: string) {
@@ -114,7 +100,6 @@ export function TaskListPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <ViewModeDropdown value={viewMode} onChange={handleViewModeChange} />
           <TaskFilterDropdown value={filterWindow} onChange={handleFilterChange} />
           <TaskSearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>

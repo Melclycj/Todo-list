@@ -69,8 +69,6 @@ export interface TaskOrderUpdatePayload {
 
 export type TaskFilterWindow = 'today' | '3days' | 'week' | 'all'
 
-export type ViewMode = 'table' | 'board'
-
 export interface TaskFilterParams {
   window?: TaskFilterWindow
   topic_id?: string

@@ -343,11 +343,11 @@ To Do → In Progress → Done
 **Description:** The view-mode dropdown offers a "Task Board" option that is persisted to `localStorage` but never consumed — `TaskList` renders the same list regardless of `viewMode`, so selecting "Task Board" silently does nothing. The dead control must be removed. (A real board view, if desired later, is a separate future requirement.)
 
 **Success Criteria:**
-- [ ] The "Task Board" option is removed from the view-mode control
-- [ ] The unused `viewMode` state, the `board` value, and the now-unused `ViewMode` type are removed — no dead code remains
-- [ ] Every option offered by the view-mode control produces a visibly distinct rendered result, or the control is removed if only one view exists
-- [ ] No persisted value produces a no-op render
-- [ ] A test asserts the view-mode control offers only functional options
+- [x] The "Task Board" option is removed from the view-mode control
+- [x] The unused `viewMode` state, the `board` value, and the now-unused `ViewMode` type are removed — no dead code remains
+- [x] Every option offered by the view-mode control produces a visibly distinct rendered result, or the control is removed if only one view exists
+- [x] No persisted value produces a no-op render
+- [x] A test asserts the view-mode control offers only functional options
 
 ---
 
