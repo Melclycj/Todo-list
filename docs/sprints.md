@@ -17,7 +17,7 @@
 
 | # | Task | Req | Status |
 |---|------|-----|--------|
-| 1 | Fix SSE reminder auth — stream no longer 401s, real-time works, token out of the URL (**routes through AppSec**) | FR-15 | To Do |
+| 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream needs in-browser check | FR-15 | Waiting for User |
 | 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
 | 3 | Undo for status & reorder; confirm on subtask delete (task/topic delete already confirm — see FR-17 correction) | FR-17 | Waiting for User |
 | 4 | Accessibility baseline — aria-labels, keyboard drag, drawer role+Esc+focus, archive keyboard, contrast token, focus rings (full focus-trap + axe pass deferred) | NFR-09 | Waiting for User |

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getReminder, createReminderStream } from '@/api/reminder'
+import { getReminder, openReminderStream, type ReminderStreamHandle } from '@/api/reminder'
 
 const MAX_RETRIES = 3
 const BASE_DELAY_MS = 1000
@@ -11,7 +11,7 @@ export function useReminder() {
   const retryCountRef = useRef(0)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const esRef = useRef<EventSource | null>(null)
+  const streamRef = useRef<ReminderStreamHandle | null>(null)
   const usingFallbackRef = useRef(false)
 
   function clearTimers() {
@@ -33,38 +33,37 @@ export function useReminder() {
 
   function connect() {
     if (!mountedRef.current) return
-    const es = createReminderStream()
-    esRef.current = es
 
-    es.onmessage = (event: MessageEvent) => {
-      if (!mountedRef.current) return
-      try {
-        const parsed = JSON.parse(event.data as string) as { message: string }
-        setMessage(parsed.message)
-      } catch {
-        setMessage(event.data as string)
-      }
-      retryCountRef.current = 0
-    }
+    streamRef.current = openReminderStream({
+      onMessage: (data: string) => {
+        if (!mountedRef.current) return
+        try {
+          const parsed = JSON.parse(data) as { message: string }
+          setMessage(parsed.message)
+        } catch {
+          setMessage(data)
+        }
+        retryCountRef.current = 0
+      },
+      onError: () => {
+        streamRef.current?.close()
+        streamRef.current = null
 
-    es.onerror = () => {
-      es.close()
-      esRef.current = null
+        if (!mountedRef.current) return
 
-      if (!mountedRef.current) return
+        if (retryCountRef.current >= MAX_RETRIES) {
+          startPollingFallback()
+          return
+        }
 
-      if (retryCountRef.current >= MAX_RETRIES) {
-        startPollingFallback()
-        return
-      }
+        const delay = BASE_DELAY_MS * Math.pow(2, retryCountRef.current)
+        retryCountRef.current += 1
 
-      const delay = BASE_DELAY_MS * Math.pow(2, retryCountRef.current)
-      retryCountRef.current += 1
-
-      retryTimeoutRef.current = setTimeout(() => {
-        connect()
-      }, delay)
-    }
+        retryTimeoutRef.current = setTimeout(() => {
+          connect()
+        }, delay)
+      },
+    })
   }
 
   useEffect(() => {
@@ -79,7 +78,7 @@ export function useReminder() {
 
     return () => {
       mountedRef.current = false
-      esRef.current?.close()
+      streamRef.current?.close()
       clearTimers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

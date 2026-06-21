@@ -330,12 +330,12 @@ To Do → In Progress → Done
 **Description:** The reminder SSE stream (`GET /reminder/stream`) authenticates via a `?token=` query parameter, but the backend `HTTPBearer()` dependency reads the token only from the `Authorization` header. Because `EventSource` cannot set headers, every stream connection returns `401`, and the frontend silently retries then falls back to 60-second polling. The real-time reminder feature (FR-07) is therefore effectively non-functional, and access tokens placed in URLs leak into server/proxy logs. This is a backend/auth fix and **must be routed through AppSec**.
 
 **Success Criteria:**
-- [ ] An authenticated user's `GET /reminder/stream` connection succeeds (no `401`) and receives a pushed reminder event — verified by an integration test
-- [ ] The access token is no longer transmitted in a URL query string (use a short-lived stream ticket, a cookie-based mechanism, or an equivalent header-compatible transport)
-- [ ] With a valid session, real-time delivery works over the stream (reminder updates within 1s of a status change per FR-07) rather than silently falling back to polling
-- [ ] The unit test that asserts the old `?token=` URL is updated to the new contract
-- [ ] No access token appears in server access logs for the stream endpoint
-- [ ] The change is reviewed through AppSec (authentication + token-in-URL handling)
+- [ ] An authenticated user's `GET /reminder/stream` connection succeeds (no `401`) and receives a pushed reminder event — verified by an integration test _(needs running app — in-browser / CI)_
+- [x] The access token is no longer transmitted in a URL query string (now sent in the `Authorization` header via a fetch-based stream)
+- [ ] With a valid session, real-time delivery works over the stream (reminder updates within 1s of a status change per FR-07) rather than silently falling back to polling _(needs running app)_
+- [x] The unit test that asserts the old `?token=` URL is updated to the new contract
+- [x] No access token appears in server access logs for the stream endpoint (access log records path only; token never in URL — AppSec-confirmed)
+- [x] The change is reviewed through AppSec (authentication + token-in-URL handling)
 
 ---
 

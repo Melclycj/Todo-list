@@ -12,7 +12,7 @@ vi.mock('./client', () => ({
 }))
 
 import client, { getAccessToken } from './client'
-import { getReminder, createReminderStream } from './reminder'
+import { getReminder, openReminderStream } from './reminder'
 
 describe('reminder api', () => {
   beforeEach(() => {
@@ -34,32 +34,48 @@ describe('reminder api', () => {
     })
   })
 
-  describe('createReminderStream', () => {
-    it('builds URL without token when no access token', () => {
-      vi.mocked(getAccessToken).mockReturnValue(null)
-      const MockEventSource = vi.fn()
-      vi.stubGlobal('EventSource', MockEventSource)
+  describe('openReminderStream', () => {
+    // A fetch whose stream never yields, so the connection stays "open" and
+    // we can assert on how it was opened.
+    function neverEndingFetch() {
+      return vi.fn().mockResolvedValue({
+        ok: true,
+        body: { getReader: () => ({ read: () => new Promise(() => {}) }) },
+      })
+    }
 
-      createReminderStream()
+    it('sends the access token in the Authorization header, never in the URL', () => {
+      vi.mocked(getAccessToken).mockReturnValue('my-token')
+      const fetchMock = neverEndingFetch()
+      vi.stubGlobal('fetch', fetchMock)
 
-      expect(MockEventSource).toHaveBeenCalledWith(
-        '/api/v1/reminder/stream',
-        { withCredentials: true }
-      )
+      const handle = openReminderStream({ onMessage: () => {}, onError: () => {} })
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe('/api/v1/reminder/stream')
+      expect(url).not.toContain('token=') // security: token must not be in the URL
+      expect(url).not.toContain('my-token') // the secret value must never appear in the URL
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer my-token')
+
+      handle.close()
       vi.unstubAllGlobals()
     })
 
-    it('appends token query param when access token is set', () => {
-      vi.mocked(getAccessToken).mockReturnValue('my-token')
-      const MockEventSource = vi.fn()
-      vi.stubGlobal('EventSource', MockEventSource)
+    it('omits the Authorization header when there is no access token', () => {
+      vi.mocked(getAccessToken).mockReturnValue(null)
+      const fetchMock = neverEndingFetch()
+      vi.stubGlobal('fetch', fetchMock)
 
-      createReminderStream()
+      const handle = openReminderStream({ onMessage: () => {}, onError: () => {} })
 
-      expect(MockEventSource).toHaveBeenCalledWith(
-        '/api/v1/reminder/stream?token=my-token',
-        { withCredentials: true }
-      )
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe('/api/v1/reminder/stream')
+      expect(url).not.toContain('token=')
+      expect((init.headers as Record<string, string>).Authorization).toBeUndefined()
+
+      handle.close()
       vi.unstubAllGlobals()
     })
   })
