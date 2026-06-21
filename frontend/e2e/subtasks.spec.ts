@@ -23,6 +23,8 @@ test.describe('FR-17 subtask delete confirm', () => {
     // 2. Open the grip context menu for the task row.
     //    The button is opacity-0 but present in DOM — Playwright can click it.
     const taskRow = page.locator('tbody tr', { hasText: taskTitle })
+    // Hover the row so the opacity-0 grip handle becomes interactable.
+    await taskRow.hover()
     const gripBtn = taskRow.getByRole('button', { name: /Actions and reorder|Actions/i })
     await gripBtn.click()
 

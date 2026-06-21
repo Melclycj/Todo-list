@@ -22,12 +22,6 @@ function nextStatus(current: TaskStatus): TaskStatus {
   return 'in_progress'
 }
 
-function statusChangeMessage(status: TaskStatus): string {
-  if (status === 'done') return 'Task completed'
-  if (status === 'in_progress') return 'Marked in progress'
-  return 'Moved to to-do'
-}
-
 export interface EditableCellProps {
   inputValue: string
   displayText: string
@@ -284,22 +278,12 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
   function handleStatusClick(e: React.MouseEvent) {
     e.stopPropagation()
     if (hasSubtasks) return // status is derived from subtasks
-    const prev = task.status
     const next = nextStatus(task.status)
     updateStatus(
       { id: task.id, payload: { status: next } },
       {
         onSuccess: () => {
-          toast(statusChangeMessage(next), {
-            action: {
-              label: 'Undo',
-              onClick: () =>
-                updateStatus(
-                  { id: task.id, payload: { status: prev } },
-                  { onError: () => toast.error('Failed to undo status change') }
-                ),
-            },
-          })
+          if (next === 'done') toast.success('Task completed')
         },
         onError: () => toast.error('Failed to update status'),
       }

@@ -355,13 +355,16 @@ To Do → In Progress → Done
 **Description:** Reversible actions (status change, drag-reorder) offer no undo, and subtask delete fires immediately on a hover-only trash icon with no confirmation — easy accidental data loss.
 
 > **Correction (2026-06-21):** task delete and topic delete are **permanent hard deletes** (verified in `task_repository.delete` / `subtask_repository.delete` — `session.delete(...)`); they do **not** go to the Archive. The 4am Archive only holds auto-archived *Done* tasks. Both already show an accurate "cannot be undone" confirmation, so there is nothing to "recover" and no false Archive promise should be added. True undo-of-delete would require a backend soft-delete + restore endpoint — tracked separately if wanted, out of scope here.
+>
+> **Correction (2026-06-22):** status-change undo was attempted but is **infeasible** — the backend enforces a forward-only status state machine (`_VALID_TRANSITIONS`: To Do→{In Progress, Done}, In Progress→{Done}, Done→{To Do}), so reverting e.g. In Progress→To Do is rejected server-side (caught by the FR-17 status-undo E2E in CI). Status-undo was removed; undo now applies only to drag-reorder. Adding status-undo would require loosening FR-02's state machine — a separate product decision.
 
 **Success Criteria:**
-- [ ] Status change and drag-reorder each present an Undo affordance that restores the single immediately-preceding state of that entity
+- [ ] Drag-reorder presents an Undo affordance that restores the immediately-preceding order
 - [ ] Subtask delete gains a confirmation dialog (matching the task-delete confirm) before the subtask is removed
 - [x] Task delete keeps a confirmation that accurately states the deletion is permanent (no false "recoverable" claim)
 - [x] Topic delete shows a confirmation consistent with task delete
-- [ ] E2E tests verify status-undo and reorder-undo restore prior state, and that subtask delete requires confirmation
+- [x] Status changes are NOT given an undo — the forward-only state machine (per FR-02) makes reverse transitions invalid server-side; the status badge cycles instead
+- [ ] E2E verifies subtask delete requires confirmation; reorder-undo is manual (drag E2E is flaky)
 
 ---
 

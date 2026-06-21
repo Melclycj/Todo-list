@@ -48,19 +48,4 @@ test.describe('Task Status Transitions', () => {
     // Task still visible on the active page
     await expect(page.getByText(title)).toBeVisible()
   })
-
-  test('status change can be undone via the toast (FR-17)', async ({ page }) => {
-    const title = `Undo Status ${uid()}`
-    await createTask(page, title)
-
-    const row = page.locator('tbody tr', { hasText: title })
-
-    // Advance Not started → In progress
-    await row.getByRole('button', { name: /Status: Not started/i }).click()
-    await expect(row.getByRole('button', { name: /Status: In progress/i })).toBeVisible()
-
-    // Undo from the toast restores the previous status
-    await page.getByRole('button', { name: 'Undo' }).click()
-    await expect(row.getByRole('button', { name: /Status: Not started/i })).toBeVisible()
-  })
 })

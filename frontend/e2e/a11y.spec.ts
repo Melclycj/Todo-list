@@ -23,6 +23,11 @@ import { uid, registerAndLogin } from './helpers'
 
 const BLOCKED_IMPACTS: ReadonlyArray<string> = ['serious', 'critical']
 
+// Run a11y scans with animations disabled so axe never measures contrast
+// mid-fade (e.g. the empty-state fade-in renders muted text semi-transparent,
+// which is a scan-timing artifact, not a real contrast failure).
+test.use({ reducedMotion: 'reduce' })
+
 test.describe('NFR-09 accessibility — axe scan', () => {
   test('login page has no serious/critical violations', async ({ page }) => {
     await page.goto('/login')
