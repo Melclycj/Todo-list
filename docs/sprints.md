@@ -12,7 +12,17 @@
 
 ## Current Sprint
 
-_No active sprint._
+**Sprint 3** | Goal: UI correctness & accessibility hardening — fix the broken reminder stream, remove dead controls, add undo, and clear the WCAG baseline
+**Started:** 2026-06-21
+
+| # | Task | Req | Status |
+|---|------|-----|--------|
+| 1 | Fix SSE reminder auth — stream no longer 401s, real-time works, token out of the URL (**routes through AppSec**) | FR-15 | To Do |
+| 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | To Do |
+| 3 | Undo + recovery for delete / status / reorder / subtask; tell users deletes go to Archive | FR-17 | To Do |
+| 4 | Accessibility baseline — aria-labels, keyboard drag, drawer focus trap, keyboard-operable controls, axe-clean | NFR-09 | To Do |
+
+> Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
 
 ---
 
@@ -25,6 +35,10 @@ _No active sprint._
 - Tech debt: Clear frontend lint errors (15 errors, mostly `react-hooks/set-state-in-effect` from React 19 rule; also `react-refresh/only-export-components`, `no-empty-object-type`, `no-explicit-any`). Wire `npm run lint` into CI so new debt can't sneak in.
 - FR-14: Strict task filter validation (reject invalid `window`)
 - NFR-08: Consistent API error envelope (401/422/429)
+- NFR-10: Design-token integrity — wire `--status-*` tokens, scrim token, remove dead code _(2026-06 UI plan, P1; unblocks FR-18)_
+- FR-18: Premium visual direction "Slate Studio" (locked) _(2026-06 UI plan, P1; do after NFR-10)_
+- FR-19: Auth first-impression redesign _(2026-06 UI plan, P1)_
+- NFR-11: Error states, error boundary & visual polish _(2026-06 UI plan, P2)_
 
 ---
 

@@ -1,7 +1,7 @@
 # Todo List App — Requirements
 
-> **Status:** Draft — v0.3
-> **Last Updated:** 2026-04-04
+> **Status:** Draft — v0.4
+> **Last Updated:** 2026-06-21
 
 ---
 
@@ -326,6 +326,69 @@ To Do → In Progress → Done
 
 ---
 
+### FR-15: SSE Reminder Authentication Fix
+**Description:** The reminder SSE stream (`GET /reminder/stream`) authenticates via a `?token=` query parameter, but the backend `HTTPBearer()` dependency reads the token only from the `Authorization` header. Because `EventSource` cannot set headers, every stream connection returns `401`, and the frontend silently retries then falls back to 60-second polling. The real-time reminder feature (FR-07) is therefore effectively non-functional, and access tokens placed in URLs leak into server/proxy logs. This is a backend/auth fix and **must be routed through AppSec**.
+
+**Success Criteria:**
+- [ ] An authenticated user's `GET /reminder/stream` connection succeeds (no `401`) and receives a pushed reminder event — verified by an integration test
+- [ ] The access token is no longer transmitted in a URL query string (use a short-lived stream ticket, a cookie-based mechanism, or an equivalent header-compatible transport)
+- [ ] With a valid session, real-time delivery works over the stream (reminder updates within 1s of a status change per FR-07) rather than silently falling back to polling
+- [ ] The unit test that asserts the old `?token=` URL is updated to the new contract
+- [ ] No access token appears in server access logs for the stream endpoint
+- [ ] The change is reviewed through AppSec (authentication + token-in-URL handling)
+
+---
+
+### FR-16: Remove Non-Functional Task Board View
+**Description:** The view-mode dropdown offers a "Task Board" option that is persisted to `localStorage` but never consumed — `TaskList` renders the same list regardless of `viewMode`, so selecting "Task Board" silently does nothing. The dead control must be removed. (A real board view, if desired later, is a separate future requirement.)
+
+**Success Criteria:**
+- [ ] The "Task Board" option is removed from the view-mode control
+- [ ] The unused `viewMode` state, the `board` value, and the now-unused `ViewMode` type are removed — no dead code remains
+- [ ] Every option offered by the view-mode control produces a visibly distinct rendered result, or the control is removed if only one view exists
+- [ ] No persisted value produces a no-op render
+- [ ] A test asserts the view-mode control offers only functional options
+
+---
+
+### FR-17: Undo & Recovery for Reversible Actions
+**Description:** The app has no undo for any action — delete task, delete topic, status change, drag-reorder, and subtask delete are all irreversible from the UI, and users are never told that deleted tasks are recoverable in the Archive. Subtask delete additionally fires immediately with no confirmation, inconsistent with task delete (which confirms).
+
+**Success Criteria:**
+- [ ] Deleting a task surfaces a message stating it can be restored from the Archive
+- [ ] Status change and drag-reorder each present an Undo affordance that restores the single immediately-preceding state of that entity
+- [ ] Subtask delete gains a confirmation dialog matching the task-delete flow (or an Undo toast) — one explicit recovery affordance
+- [ ] Topic delete presents an Undo affordance or a confirmation, consistent with task delete
+- [ ] E2E tests verify each action → recover → prior state restored
+
+---
+
+### FR-18: Premium Visual Direction — "Slate Studio"
+**Description:** The current chassis is generic (15px body with 1.5 line-height — too loose for dense task rows; near-zero-saturation grays with no hue identity; a 100%-saturation accent; an almost-invisible sidebar/canvas step; 8px radius). Apply the locked **"Slate Studio"** direction: a cool-leaned neutral palette, a tightened type scale, a refined accent, a smaller radius, and a visible depth ladder. Depends on FR-15-independent token work in NFR-10 landing first.
+
+**Success Criteria:**
+- [ ] Gray tokens carry a consistent cool hue lean (≈2–4% saturation at hue ~220)
+- [ ] `--accent` saturation is reduced from 100% to a fixed lower target value
+- [ ] `--radius` is set to 4–6px (from 8px)
+- [ ] List-row body text is 13–14px with line-height ≤ 1.4
+- [ ] The sidebar has a ≥3% luminance step from the main canvas
+- [ ] All `transition-duration` values resolve to a small named set (≤3 tokens)
+- [ ] Visual-regression baselines captured at 320/768/1440 reflect the new direction
+
+---
+
+### FR-19: Auth First-Impression Redesign
+**Description:** The auth screens are a flat, centered gray card with a generic "Todo" wordmark and a reversed heading hierarchy (the card heading is smaller than the brand name) — a template-default first impression. Redesign for a branded, intentional entry point.
+
+**Success Criteria:**
+- [ ] Auth pages move off the centered-gray-card template (a branded split panel or a deliberate brand element)
+- [ ] A real wordmark / brand mark replaces the plain "Todo" text
+- [ ] The card's action heading ("Sign in" / "Create account") is the dominant heading; the brand name is demoted to a logotype role
+- [ ] Auth pages pass axe-core with 0 serious/critical violations
+- [ ] Visual-regression baselines captured for login and register
+
+---
+
 ## Non-Functional Requirements
 
 ### NFR-01: Performance
@@ -377,7 +440,10 @@ To Do → In Progress → Done
 
 **Success Criteria:**
 - [x] A new user can create and filter a task within 60 seconds without reading documentation
-- [ ] UI is responsive across desktop, tablet, and mobile viewports
+- [ ] No horizontal overflow at 320, 375, and 768px on any surface (verified by responsive screenshots)
+- [ ] The task list presents a card/stacked view (or sticky status+title columns) below the `md` breakpoint instead of a fixed-width horizontally-scrolling table
+- [ ] Navigation is reachable on tablet (768–1023px) — a sidebar rail or extended drawer, not a gap
+- [ ] All interactive targets are ≥44×44px on touch; row actions and the Archive "Restore" action are reachable without hover
 - [x] Consistent visual language across the app: typography, spacing, and color system
 - [x] Empty states are handled with a descriptive message (e.g. "No tasks due today")
 
@@ -414,3 +480,43 @@ To Do → In Progress → Done
 - [ ] Existing enveloped errors (`400`/`403`/`404`/`500`) are unchanged
 - [ ] The frontend still performs silent refresh on `401` and renders validation errors correctly
 - [ ] `api-spec.md` Error Handling is updated; tests assert the envelope shape for `401`, `422`, and `429`
+
+---
+
+### NFR-09: Accessibility Baseline (Keyboard, Names, Focus)
+**Description:** Multiple WCAG 2.2 gaps surfaced in the 2026-06 UI audit: icon-only buttons expose only a `title` attribute (not reliably announced by screen readers), drag-to-reorder has no keyboard alternative, the custom task create-drawer has no focus trap, and several custom interactive elements (`<div onClick>`) are not keyboard-operable. (A contrast review found `--primary` ≈5.17:1 and `--muted-foreground` ≈4.9:1 both **pass** AA on white; only `--muted-foreground` over `bg-muted` is marginal.)
+
+**Success Criteria:**
+- [ ] Every icon-only button has an `aria-label`
+- [ ] Drag-to-reorder is operable by keyboard (dnd-kit `KeyboardSensor` wired with `sortableKeyboardCoordinates`)
+- [ ] The task create-drawer has `role="dialog"`, `aria-modal`, a focus trap, and Esc-to-close
+- [ ] Archive expand/collapse and all custom interactive elements are keyboard-focusable and operable, with a visible focus indicator
+- [ ] Task status is distinguishable without relying on color alone
+- [ ] axe-core reports 0 serious/critical violations on each surface at 320, 768, and 1440px
+- [ ] Any token measured below 4.5:1 on its actual background (i.e. `--muted-foreground` on `bg-muted`) is darkened to pass
+
+---
+
+### NFR-10: Design-Token Integrity
+**Description:** Status badge colors hardcode raw Tailwind palette classes (`gray-`/`amber-`/`emerald-`) and ignore the `--status-*` tokens already declared in `index.css`; overlay scrims use three different `bg-black/*` opacities; a magic `zIndex: 9999` and off-scale micro-typography bypass the token system; and several dead files remain. This must land before FR-18 (re-skinning depends on tokens being wired).
+
+**Success Criteria:**
+- [ ] Status badges render via the `--status-*` tokens (no raw status palette classes remain — grep-verified)
+- [ ] A single `--overlay` token replaces all `bg-black/*` backdrops at one consistent opacity
+- [ ] No inline z-index literals remain (the z-scale is tokenized)
+- [ ] Dead files are removed: `App.css`, `TaskStatusCircle.tsx`, `TaskRowExpanded.tsx`
+- [ ] Off-scale micro-type (`text-[10px]`, `text-[11px]`) is normalized to scale tokens
+- [ ] `npm run build` and the test suite pass after the deletions
+
+---
+
+### NFR-11: Error States, Error Boundary & Visual Polish
+**Description:** Network errors on the task and topic lists render nothing (infinite skeleton); there is **no React error boundary anywhere** (Sentry is initialized but unused), so any render exception produces a white screen; `RequireAuth` returns `null` during token refresh (blank flash); auth collapses all failures to one generic message; and several visual-hierarchy nits remain (the New Task button is not visually dominant, the header has no action/filter separation, secondary-page headers are inconsistent).
+
+**Success Criteria:**
+- [ ] An app-level error boundary (e.g. `Sentry.ErrorBoundary`) renders a fallback UI instead of a white screen on a render exception
+- [ ] The task list and topic list show an error state with a retry action when the fetch fails
+- [ ] `RequireAuth` shows a loading indicator (not a blank screen) during token refresh
+- [ ] Auth errors differentiate network vs invalid-credential vs server failures
+- [ ] The "New Task" button renders as the filled primary (`variant="default"`) while other header buttons are `ghost`/`outline`
+- [ ] Filter and action header clusters are visually separated; secondary-page headers share one consistent pattern
