@@ -17,11 +17,13 @@ test.describe('FR-17 subtask delete confirm', () => {
     const taskTitle = `SubtaskParent ${uid()}`
     const subtaskTitle = `MySub ${uid()}`
 
-    // 1. Create a parent task
+    // 1. Create a parent task + a sibling. The grip handle is hidden for
+    //    single-item date groups (RowContextMenu hidden={isDragDisabled}), so
+    //    we need 2 tasks in the same (no-date) group for the grip to render.
     await createTask(page, taskTitle)
+    await createTask(page, `Sibling ${uid()}`)
 
-    // 2. Open the grip context menu for the task row.
-    //    The button is opacity-0 but present in DOM — Playwright can click it.
+    // 2. Open the grip context menu for the parent task row.
     const taskRow = page.locator('tbody tr', { hasText: taskTitle })
     // Hover the row so the opacity-0 grip handle becomes interactable.
     await taskRow.hover()

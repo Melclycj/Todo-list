@@ -68,9 +68,9 @@ test.describe('NFR-09 accessibility — axe scan', () => {
     await registerAndLogin(page, `a11y-archive-${uid()}@example.com`, 'password123')
     await page.goto('/archive')
 
-    // Wait for the page heading to render. Do NOT use networkidle — the
-    // reminder SSE stream stays open, so the page never reaches network idle.
-    await expect(page.getByRole('heading').first()).toBeVisible()
+    // Wait for the empty-state to mount (fresh account → archive is empty)
+    // before scanning, so axe doesn't measure it mid-render/mid-fade.
+    await expect(page.getByText('Archive is empty')).toBeVisible()
 
     const results = await new AxeBuilder({ page }).analyze()
     const violations = results.violations.filter(
@@ -87,8 +87,9 @@ test.describe('NFR-09 accessibility — axe scan', () => {
     await registerAndLogin(page, `a11y-recurring-${uid()}@example.com`, 'password123')
     await page.goto('/recurring')
 
-    // Avoid networkidle — the reminder SSE stream stays open.
-    await expect(page.getByRole('heading').first()).toBeVisible()
+    // Wait for the empty-state to mount (fresh account → no recurring tasks)
+    // before scanning, so axe doesn't measure it mid-render/mid-fade.
+    await expect(page.getByText('No recurring tasks')).toBeVisible()
 
     const results = await new AxeBuilder({ page }).analyze()
     const violations = results.violations.filter(
