@@ -41,6 +41,7 @@
 - FR-18: Premium visual direction "Slate Studio" (locked) _(2026-06 UI plan, P1; do after NFR-10)_
 - FR-19: Auth first-impression redesign _(2026-06 UI plan, P1)_
 - NFR-11: Error states, error boundary & visual polish _(2026-06 UI plan, P2)_
+- NFR-09 follow-up: keyboard drag-reorder — needs a dedicated drag handle (the grip's menu+drag dual role blocks keyboard activation; CI E2E confirmed it doesn't reorder) _(from FR-17/NFR-09 work, P2)_
 
 ---
 

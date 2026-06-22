@@ -493,7 +493,7 @@ To Do → In Progress → Done
 
 **Success Criteria:**
 - [x] Every icon-only button has an `aria-label` (incl. the topic-selector trigger, now a `<button>`)
-- [x] Drag-to-reorder is operable by keyboard (dnd-kit `KeyboardSensor` wired) — keyboard-reorder E2E added (focus grip → Space/Arrow/Space → order changes)
+- [ ] Drag-to-reorder is operable by keyboard — _`KeyboardSensor` + `sortableKeyboardCoordinates` are wired, but a CI E2E proved keyboard activation does NOT reorder in practice: the grip handle's dual role (context-menu trigger + drag handle) blocks it. A working keyboard reorder needs a dedicated drag handle — deferred to backlog._
 - [x] The task create-drawer has `role="dialog"`, `aria-modal`, `aria-labelledby`, Esc-to-close, focus-on-open, **and a full Tab-cycle focus trap**
 - [x] Archive expand/collapse and all custom interactive elements are keyboard-focusable and operable with a visible focus indicator — archive expand + grip + restore + topic-selector (now a `<button>`); focus rings via shadcn defaults + explicit `focus-visible`
 - [x] Task status is distinguishable without relying on color alone
