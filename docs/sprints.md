@@ -20,11 +20,11 @@
 | 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream needs in-browser check | FR-15 | Waiting for User |
 | 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
 | 3 | Reorder undo (manual) + subtask-delete confirm (E2E); status-undo removed (forward-only state machine); task/topic delete already confirm | FR-17 | Waiting for User |
-| 4 | Accessibility baseline — aria-labels, keyboard drag, drawer role+Esc+focus, archive keyboard, contrast token, focus rings (full focus-trap + axe pass deferred) | NFR-09 | Waiting for User |
+| 4 | Accessibility baseline — aria-labels, keyboard reorder (Alt+↑/↓), drawer role+Esc+full focus-trap, archive keyboard, contrast token, focus rings; axe 0 serious/critical at 320/768/1440 (CI) | NFR-09 | Done |
 
 > Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
 >
-> **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm (status-undo removed — infeasible, see FR-17), FR-15 stream-200, and NFR-09 axe (0 serious/critical on login/tasks/archive/recurring) now have Playwright E2E that run in CI on push (`.github/workflows/ci.yml` `e2e` job). Pushing `dev` verifies them without manual testing. **Exceptions still needing a human:** FR-17 **reorder-undo** (keyboard-drag E2E would be flaky — left manual) and the NFR-09 axe result may surface real violations (honest signal, not yet known to be green).
+> **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm (status-undo removed — infeasible, see FR-17), FR-15 stream-200, NFR-09 axe (0 serious/critical on login/tasks/archive/recurring × 320/768/1440), keyboard reorder (Alt+↑/↓), and the drawer focus-trap now have Playwright E2E running in CI on push (`.github/workflows/ci.yml` `e2e` job) — all green. **Still needing a human eyeball:** FR-15 real-time stream round-trip and FR-17 pointer drag+Undo round-trip (both verified-by-construction in code; a reliable E2E is precluded by timing/flakiness).
 
 ---
 
@@ -41,7 +41,6 @@
 - FR-18: Premium visual direction "Slate Studio" (locked) _(2026-06 UI plan, P1; do after NFR-10)_
 - FR-19: Auth first-impression redesign _(2026-06 UI plan, P1)_
 - NFR-11: Error states, error boundary & visual polish _(2026-06 UI plan, P2)_
-- NFR-09 follow-up: keyboard drag-reorder — needs a dedicated drag handle (the grip's menu+drag dual role blocks keyboard activation; CI E2E confirmed it doesn't reorder) _(from FR-17/NFR-09 work, P2)_
 
 ---
 

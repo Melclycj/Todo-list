@@ -243,9 +243,11 @@ interface TaskRowProps {
   staggerIndex?: number
   /** If set, render a 3px blue line on the top or bottom edge of the row */
   dropIndicator?: 'above' | 'below' | null
+  /** Move this task up/down within its date group (keyboard reorder) */
+  onKeyboardReorder?: (taskId: string, direction: 'up' | 'down') => void
 }
 
-export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled, staggerIndex, dropIndicator }: TaskRowProps) {
+export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSelect, isExpanded, onToggleExpand, totalColumns = 7, isDragDisabled, staggerIndex, dropIndicator, onKeyboardReorder }: TaskRowProps) {
   const {
     attributes,
     listeners,
@@ -348,6 +350,7 @@ export function TaskRow({ task, columnWidths, isEditMode, isSelected, onToggleSe
               dragAttributes={attributes}
               dragListeners={listeners}
               hidden={isDragDisabled}
+              onReorder={(dir) => onKeyboardReorder?.(task.id, dir)}
             />
           </td>
         )}

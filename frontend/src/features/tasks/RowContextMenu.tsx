@@ -22,6 +22,8 @@ interface RowContextMenuProps {
   dragListeners?: Record<string, Function>
   /** Hide the grip icon entirely (e.g. single-item groups) */
   hidden?: boolean
+  /** Keyboard reorder: move this row up/down within its group (Alt+Arrow) */
+  onReorder?: (direction: 'up' | 'down') => void
 }
 
 // Must match the PointerSensor activationConstraint.distance in TaskList.
@@ -29,7 +31,7 @@ interface RowContextMenuProps {
 // a drag (dnd-kit starts dragging) and suppress the menu-open click.
 const DRAG_THRESHOLD = 5
 
-export function RowContextMenu({ actions, dragAttributes, dragListeners, hidden }: RowContextMenuProps) {
+export function RowContextMenu({ actions, dragAttributes, dragListeners, hidden, onReorder }: RowContextMenuProps) {
   const [open, setOpen] = useState(false)
   const wasDrag = useRef(false)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -95,8 +97,16 @@ export function RowContextMenu({ actions, dragAttributes, dragListeners, hidden 
         {...(dragListeners as Record<string, any>)}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          // Enter/Space still open the menu (button default); Alt+Arrow reorders.
+          if (onReorder && e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            e.preventDefault()
+            onReorder(e.key === 'ArrowUp' ? 'up' : 'down')
+          }
+        }}
         className={`opacity-0 group-hover:opacity-60 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none transition-opacity p-1 ${cursorClass} rounded hover:bg-accent/40`}
         aria-label={isDraggable ? 'Actions and reorder' : 'Actions'}
+        aria-keyshortcuts={isDraggable ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
       >

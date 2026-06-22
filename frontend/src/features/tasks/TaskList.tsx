@@ -3,7 +3,6 @@ import {
   DndContext,
   closestCenter,
   DragOverlay,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -11,7 +10,7 @@ import {
   type DragEndEvent,
   type DragOverEvent,
 } from '@dnd-kit/core'
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useQueryClient } from '@tanstack/react-query'
 import { TaskRow } from './TaskRow'
@@ -89,10 +88,7 @@ export function TaskList({
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 5 },
   })
-  const keyboardSensor = useSensor(KeyboardSensor, {
-    coordinateGetter: sortableKeyboardCoordinates,
-  })
-  const sensors = useSensors(pointerSensor, keyboardSensor)
+  const sensors = useSensors(pointerSensor)
 
   const totalWidth =
     Object.values(widths).reduce((sum, w) => sum + w, 0) +
@@ -185,6 +181,28 @@ export function TaskList({
       )
     },
     [queryClient, batchReorder]
+  )
+
+  // Keyboard-accessible reorder: move a task up/down within its date group.
+  // dnd-kit's keyboard sensor conflicts with the grip's menu trigger, so this
+  // is an explicit Alt+Arrow path; both it and pointer drag use applyOrder.
+  const moveTask = useCallback(
+    (taskId: string, direction: 'up' | 'down') => {
+      const group = dateGroups.find((g) => g.tasks.some((t) => t.id === taskId))
+      if (!group || group.tasks.length < 2) return
+      const ids = group.tasks.map((t) => t.id)
+      const idx = ids.indexOf(taskId)
+      const target = direction === 'up' ? idx - 1 : idx + 1
+      if (target < 0 || target >= ids.length) return
+      const prevOrder = [...ids]
+      const newOrder = [...ids]
+      ;[newOrder[idx], newOrder[target]] = [newOrder[target], newOrder[idx]]
+      applyOrder(newOrder)
+      toast('Task moved', {
+        action: { label: 'Undo', onClick: () => applyOrder(prevOrder) },
+      })
+    },
+    [dateGroups, applyOrder]
   )
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -296,6 +314,7 @@ export function TaskList({
                         isDragDisabled={isSingleItem}
                         staggerIndex={staggerIdx}
                         dropIndicator={indicator}
+                        onKeyboardReorder={moveTask}
                       />
                     )
                   })}
