@@ -97,4 +97,28 @@ test.describe('Task CRUD', () => {
       page.locator('tbody tr').filter({ hasText: /KB-/ }).first()
     ).toContainText(b)
   })
+
+  test('reorder presents an Undo that restores the prior order (FR-17)', async ({ page }) => {
+    const a = `KU-A ${uid()}`
+    const b = `KU-B ${uid()}`
+    await createTask(page, a)
+    await createTask(page, b)
+
+    const rowA = page.locator('tbody tr', { hasText: a })
+    await rowA.hover()
+    const grip = rowA.getByRole('button', { name: /Actions and reorder|Actions/i })
+    await grip.focus()
+
+    // Reorder A below B, then Undo restores the immediately-preceding order.
+    // (The Undo toast + applyOrder(prevOrder) is identical for pointer drag.)
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(
+      page.locator('tbody tr').filter({ hasText: /KU-/ }).first()
+    ).toContainText(b)
+
+    await page.getByRole('button', { name: 'Undo' }).click()
+    await expect(
+      page.locator('tbody tr').filter({ hasText: /KU-/ }).first()
+    ).toContainText(a)
+  })
 })

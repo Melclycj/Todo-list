@@ -359,12 +359,12 @@ To Do → In Progress → Done
 > **Correction (2026-06-22):** status-change undo was attempted but is **infeasible** — the backend enforces a forward-only status state machine (`_VALID_TRANSITIONS`: To Do→{In Progress, Done}, In Progress→{Done}, Done→{To Do}), so reverting e.g. In Progress→To Do is rejected server-side (caught by the FR-17 status-undo E2E in CI). Status-undo was removed; undo now applies only to drag-reorder. Adding status-undo would require loosening FR-02's state machine — a separate product decision.
 
 **Success Criteria:**
-- [ ] Drag-reorder presents an Undo affordance that restores the immediately-preceding order — _implemented; the drag+Undo round-trip stays a manual check (pointer-drag E2E is flaky)_
+- [x] Drag-reorder presents an Undo affordance that restores the immediately-preceding order — keyboard-path E2E verifies the Undo restores the prior order; pointer-drag fires the identical toast (`applyOrder(prevOrder)`), gesture not separately E2E'd (flaky)
 - [x] Subtask delete gains a confirmation dialog (matching the task-delete confirm) before the subtask is removed — E2E-verified
 - [x] Task delete keeps a confirmation that accurately states the deletion is permanent (no false "recoverable" claim)
 - [x] Topic delete shows a confirmation consistent with task delete
 - [x] Status changes are NOT given an undo — the forward-only state machine (per FR-02) makes reverse transitions invalid server-side; the status badge cycles instead
-- [x] E2E verifies subtask delete requires confirmation; reorder-undo stays manual (drag-with-undo E2E is flaky)
+- [x] E2E verifies subtask delete requires confirmation AND that reorder+Undo restores the prior order (keyboard path); only the pointer-drag gesture stays manual (flaky)
 
 ---
 

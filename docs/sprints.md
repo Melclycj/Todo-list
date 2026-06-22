@@ -19,7 +19,7 @@
 |---|------|-----|--------|
 | 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream needs in-browser check | FR-15 | Waiting for User |
 | 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
-| 3 | Reorder undo (manual) + subtask-delete confirm (E2E); status-undo removed (forward-only state machine); task/topic delete already confirm | FR-17 | Waiting for User |
+| 3 | Reorder Undo (Alt+↑/↓ E2E'd) + subtask-delete confirm (E2E); status-undo removed (forward-only state machine); task/topic delete confirm | FR-17 | Done |
 | 4 | Accessibility baseline — aria-labels, keyboard reorder (Alt+↑/↓), drawer role+Esc+full focus-trap, archive keyboard, contrast token, focus rings; axe 0 serious/critical at 320/768/1440 (CI) | NFR-09 | Done |
 
 > Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
