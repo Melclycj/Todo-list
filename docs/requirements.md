@@ -493,11 +493,11 @@ To Do → In Progress → Done
 
 **Success Criteria:**
 - [x] Every icon-only button has an `aria-label` (incl. the topic-selector trigger, now a `<button>`)
-- [ ] Drag-to-reorder is operable by keyboard — _`KeyboardSensor` + `sortableKeyboardCoordinates` are wired, but a CI E2E proved keyboard activation does NOT reorder in practice: the grip handle's dual role (context-menu trigger + drag handle) blocks it. A working keyboard reorder needs a dedicated drag handle — deferred to backlog._
+- [x] Drag-to-reorder is operable by keyboard — **Alt+↑/↓** on the focused grip reorders within the date group (routed to the shared `applyOrder`, so it persists + gets Undo), decoupled from the menu (Enter/Space still opens it); keyboard-reorder E2E verifies it
 - [x] The task create-drawer has `role="dialog"`, `aria-modal`, `aria-labelledby`, Esc-to-close, focus-on-open, **and a full Tab-cycle focus trap**
 - [x] Archive expand/collapse and all custom interactive elements are keyboard-focusable and operable with a visible focus indicator — archive expand + grip + restore + topic-selector (now a `<button>`); focus rings via shadcn defaults + explicit `focus-visible`
 - [x] Task status is distinguishable without relying on color alone
-- [ ] axe-core reports 0 serious/critical violations on each surface at 320, 768, and 1440px — _E2E now scans all three widths; pending CI green_
+- [x] axe-core reports 0 serious/critical violations on each surface at 320, 768, and 1440px — CI-verified (login/tasks/archive/recurring × 320/768/1440)
 - [x] Any token measured below 4.5:1 on its actual background (i.e. `--muted-foreground` on `bg-muted`) is darkened to pass
 
 ---
