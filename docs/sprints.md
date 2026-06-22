@@ -24,7 +24,7 @@
 
 > Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
 >
-> **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm (status-undo removed — infeasible, see FR-17), FR-15 stream-200, NFR-09 axe (0 serious/critical on login/tasks/archive/recurring × 320/768/1440), keyboard reorder (Alt+↑/↓), and the drawer focus-trap now have Playwright E2E running in CI on push (`.github/workflows/ci.yml` `e2e` job) — all green. **Still needing a human eyeball:** FR-15 real-time stream round-trip and FR-17 pointer drag+Undo round-trip (both verified-by-construction in code; a reliable E2E is precluded by timing/flakiness).
+> **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm + reorder-Undo, FR-15 stream-200, NFR-09 axe (0 serious/critical on login/tasks/archive/recurring × 320/768/1440), keyboard reorder (Alt+↑/↓), and the drawer focus-trap now have Playwright E2E running in CI on push (`.github/workflows/ci.yml` `e2e` job) — all green. **Still needing a human eyeball:** only FR-15's real-time stream round-trip (status change → banner < 1s) — verified-by-construction (stream connects ✅ + push wired ✅), but a reliable E2E is precluded by FR-07's time-of-day reminder window.
 
 ---
 
