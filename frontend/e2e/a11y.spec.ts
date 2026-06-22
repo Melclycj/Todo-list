@@ -27,17 +27,27 @@ async function freezeAnimations(page: Page) {
   })
 }
 
+// NFR-09 requires the scan at 320 / 768 / 1440 px.
+const VIEWPORTS = [
+  { width: 320, height: 800 },
+  { width: 768, height: 1024 },
+  { width: 1440, height: 900 },
+]
+
 async function expectNoSeriousViolations(page: Page, label: string) {
-  await freezeAnimations(page)
-  const results = await new AxeBuilder({ page }).analyze()
-  const violations = results.violations.filter(
-    (v) => v.impact && BLOCKED_IMPACTS.includes(v.impact)
-  )
-  expect(
-    violations,
-    `axe found ${violations.length} serious/critical violation(s) on ${label}:\n` +
-      violations.map((v) => `  [${v.impact}] ${v.id}: ${v.description}`).join('\n')
-  ).toHaveLength(0)
+  for (const vp of VIEWPORTS) {
+    await page.setViewportSize(vp)
+    await freezeAnimations(page)
+    const results = await new AxeBuilder({ page }).analyze()
+    const violations = results.violations.filter(
+      (v) => v.impact && BLOCKED_IMPACTS.includes(v.impact)
+    )
+    expect(
+      violations,
+      `axe found ${violations.length} serious/critical violation(s) on ${label} @${vp.width}px:\n` +
+        violations.map((v) => `  [${v.impact}] ${v.id}: ${v.description}`).join('\n')
+    ).toHaveLength(0)
+  }
 }
 
 test.describe('NFR-09 accessibility — axe scan', () => {

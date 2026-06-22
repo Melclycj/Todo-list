@@ -23,7 +23,7 @@ export function ReminderBanner() {
   if (!displayedMessage) return null
 
   return (
-    <div className="border-l-2 border-primary bg-accent px-2 py-1.5 mt-2 rounded-r-md">
+    <div data-testid="reminder-banner" className="border-l-2 border-primary bg-accent px-2 py-1.5 mt-2 rounded-r-md">
       <p
         className="text-xs text-foreground leading-snug transition-opacity duration-300"
         style={{ opacity: fading ? 0 : 1 }}

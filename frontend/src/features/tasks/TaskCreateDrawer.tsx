@@ -85,6 +85,28 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
     }
   }
 
+  // Full focus trap: keep Tab / Shift+Tab cycling within the drawer, plus Esc.
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (e.key !== 'Tab' || !drawerRef.current) return
+    const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusables.length === 0) return
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+
   const isPending = isCreatingTask || isCreatingTemplate
 
   return (
@@ -109,7 +131,7 @@ export function TaskCreateDrawer({ open, onClose, recurringOnly = false }: TaskC
           visible ? 'translate-x-0' : 'translate-x-full'
         )}
         onTransitionEnd={handleTransitionEnd}
-        onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
+        onKeyDown={handleKeyDown}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
