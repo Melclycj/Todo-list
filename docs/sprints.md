@@ -12,44 +12,7 @@
 
 ## Current Sprint
 
-**Sprint 3** | Goal: UI correctness & accessibility hardening — fix the broken reminder stream, remove dead controls, add undo, and clear the WCAG baseline
-**Started:** 2026-06-21
-
-| # | Task | Req | Status |
-|---|------|-----|--------|
-| 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream manually verified in-browser | FR-15 | Done |
-| 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
-| 3 | Reorder Undo (Alt+↑/↓ E2E'd) + subtask-delete confirm (E2E); status-undo removed (forward-only state machine); task/topic delete confirm | FR-17 | Done |
-| 4 | Accessibility baseline — aria-labels, keyboard reorder (Alt+↑/↓), drawer role+Esc+full focus-trap, archive keyboard, contrast token, focus rings; axe 0 serious/critical at 320/768/1440 (CI) | NFR-09 | Done |
-
-> Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
->
-> **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm + reorder-Undo, FR-15 stream-200, NFR-09 axe (0 serious/critical on login/tasks/archive/recurring × 320/768/1440), keyboard reorder (Alt+↑/↓), and the drawer focus-trap now have Playwright E2E running in CI on push (`.github/workflows/ci.yml` `e2e` job) — all green. **Still needing a human eyeball:** only FR-15's real-time stream round-trip (status change → banner < 1s) — verified-by-construction (stream connects ✅ + push wired ✅), but a reliable E2E is precluded by FR-07's time-of-day reminder window.
->
-> **AppSec evidence backfill (done, 2026-07-01):** formalized FR-15's "AppSec-reviewed" claim into `.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml` — **decision: BLOCKED** (not a fail on the fix itself: code-review PASS + live-curl confirmed the old `?token=` contract now returns 401). Blocked on 4 items, none of which are about FR-15's correctness: (1) missing `overlay-websocket/checklist.yaml` — process artifact not generated in this scoped run; (2) CSF Respond coverage missing; (3) CSF Recover coverage missing — both are org-wide evidence categories out of scope for a single-feature backfill; (4) severity-floor FAIL — 2 real, FR-15-unrelated production-dependency CVEs: `axios` (SSRF/prototype-pollution) and `react-router-dom`→`react-router` (deserialization RCE / redirect XSS), both `fixAvailable`. DAST baseline was explicitly skipped (no ZAP wrapper infra yet; candidate for backlog). **Dependency fix (done, 2026-07-01, commit `4122474`):** `axios` bumped 1.13.6→1.18.1, `react-router-dom` bumped 7.13.1→7.18.1 in `frontend/package.json`. Verified: `npm audit` no longer lists either package (remaining 11 findings are the pre-existing dev/build-tooling ones, `computed_risk: low`, already triaged); `tsc -b && vite build` clean; frontend unit-test suite 48/48 passing; local docker stack rebuilt and reachable.
->
-> **AppSec full close-out (done, 2026-07-02):** all 3 remaining blockers cleared — (1) `overlay-websocket/checklist.yaml` written (5 items, surfaced one new low finding FR15-SSE-004: logout doesn't kill an already-open SSE stream's stateless JWT, bounded by the existing 15-min token TTL); (2) RS evidence (`pentest/disposition.yaml` — genuine not-required disposition); (3) RC evidence (`recovery/backup-procedure.yaml` — real daily pg_dump backup, honestly flags no restore drill has ever been run). axios/react-router-dom findings re-filed as `remediated`. **Final decision: PASS** (`.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml`), independently confirmed via `appsec-sdk gate.check fr15-sse-auth` → exit 0. All 6 CSF functions PASS, 0 critical/high findings, redaction attested. Real residual risk shipping with this PASS (not blocking, but worth prioritizing): FR15-SSE-001 (medium — SSE stream has no per-user connection cap/rate limit, can exhaust the DB pool) and FR15-SSE-004 (low — logout doesn't actively kill open SSE streams). Suggest picking FR15-SSE-001 up as a future sprint task.
-
-### Retrospective
-
-**What went well:**
-- FR-16, FR-17, and NFR-09 landed cleanly with full Playwright E2E + axe coverage running in CI — no manual verification needed for any of the three.
-- FR-15's core fix (token out of the URL, into the `Authorization` header via a fetch-based stream) worked correctly on the first real test — live curl against the local stack confirmed the old `?token=` contract is rejected, and the manual EventStream check confirmed a push arrives within ~1s of a status change.
-- The AppSec evidence backfill, while heavier than expected, paid for itself: it caught two real production-dependency CVEs (`axios`, `react-router-dom`) that were completely unrelated to FR-15's actual code change — a good example of security tooling surfacing real value beyond the task that triggered it.
-- Using the local docker-compose stack as the target for headers/DAST-adjacent checks worked well given this project has no separate staging environment.
-
-**Problems encountered:**
-- Several AppSec/QA governance hooks fired on false positives this sprint — naive keyword scanning tripped on quoted historical status text, a commit message containing the word "vitest", and a shared test-account password that had to be disclosed to give login instructions. None were real issues; each required a quick investigation to confirm before moving on.
-- The AppSec evidence-validator agent's first re-validation pass declared `PASS` but omitted required schema fields (the redaction-attestation block, in particular) — the deterministic `appsec-sdk gate.check` disagreed and caught it. Lesson: verify agent-declared verdicts against the deterministic checker, don't trust the self-report alone.
-- Tried to inspect a long-lived SSE connection's network response body via a blocking tool call — this hung for ~55 minutes since the stream never terminates. Should have used a non-blocking approach (e.g. attaching a listener to the page's own EventSource) from the start.
-- The manual SSE-push test was initially confusing: a test task due "today" didn't affect the reminder message at all. Root cause: FR-07's reminder logic uses a 4am-to-4am day window, and a task due at midnight (the default when picking a date with no time) falls in the *previous* day's window, not the one the UI implies. Not a bug in FR-15, but a non-obvious FR-07 quirk worth remembering for future manual reminder testing.
-
-**New findings (added to backlog):**
-- `FR15-SSE-001` (medium) — SSE reminder stream has no per-user connection cap or rate limit; can exhaust the DB connection pool.
-- `FR15-SSE-004` (low) — logout doesn't terminate an already-open SSE stream (bounded by the existing 15-min access-token TTL).
-- DAST baseline scanning infra doesn't exist in this repo yet — needed before any future full release-readiness AppSec audit.
-
-**Spec drift check:** None found. `docs/api-spec.md` and `docs/frontend-spec.md` describe the reminder stream and view-mode/reorder/a11y surfaces at an architectural level that didn't reference the old buggy `?token=` behavior or the removed Task Board option, so nothing needed correcting.
+_No active sprint._
 
 ---
 
@@ -73,6 +36,50 @@
 ---
 
 ## Completed Sprints
+
+<details>
+<summary>Sprint 3 — UI correctness & accessibility hardening (2026-06-21 to 2026-07-02)</summary>
+
+**Sprint 3** | Goal: UI correctness & accessibility hardening — fix the broken reminder stream, remove dead controls, add undo, and clear the WCAG baseline
+**Started:** 2026-06-21
+
+| # | Task | Req | Status |
+|---|------|-----|--------|
+| 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream manually verified in-browser | FR-15 | Done |
+| 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
+| 3 | Reorder Undo (Alt+↑/↓ E2E'd) + subtask-delete confirm (E2E); status-undo removed (forward-only state machine); task/topic delete confirm | FR-17 | Done |
+| 4 | Accessibility baseline — aria-labels, keyboard reorder (Alt+↑/↓), drawer role+Esc+full focus-trap, archive keyboard, contrast token, focus rings; axe 0 serious/critical at 320/768/1440 (CI) | NFR-09 | Done |
+
+> Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
+>
+> **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm + reorder-Undo, FR-15 stream-200, NFR-09 axe (0 serious/critical on login/tasks/archive/recurring × 320/768/1440), keyboard reorder (Alt+↑/↓), and the drawer focus-trap now have Playwright E2E running in CI on push (`.github/workflows/ci.yml` `e2e` job) — all green.
+>
+> **AppSec evidence backfill (done, 2026-07-01):** formalized FR-15's "AppSec-reviewed" claim into `.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml` — **decision: BLOCKED** (not a fail on the fix itself: code-review PASS + live-curl confirmed the old `?token=` contract now returns 401). Blocked on 4 items, none of which are about FR-15's correctness: (1) missing `overlay-websocket/checklist.yaml` — process artifact not generated in this scoped run; (2) CSF Respond coverage missing; (3) CSF Recover coverage missing — both are org-wide evidence categories out of scope for a single-feature backfill; (4) severity-floor FAIL — 2 real, FR-15-unrelated production-dependency CVEs: `axios` (SSRF/prototype-pollution) and `react-router-dom`→`react-router` (deserialization RCE / redirect XSS), both `fixAvailable`. DAST baseline was explicitly skipped (no ZAP wrapper infra yet; candidate for backlog). **Dependency fix (done, 2026-07-01, commit `4122474`):** `axios` bumped 1.13.6→1.18.1, `react-router-dom` bumped 7.13.1→7.18.1 in `frontend/package.json`. Verified: `npm audit` no longer lists either package; `tsc -b && vite build` clean; frontend unit-test suite 48/48 passing; local docker stack rebuilt and reachable.
+>
+> **AppSec full close-out (done, 2026-07-02):** all 3 remaining blockers cleared — (1) `overlay-websocket/checklist.yaml` written (5 items, surfaced one new low finding FR15-SSE-004: logout doesn't kill an already-open SSE stream's stateless JWT, bounded by the existing 15-min token TTL); (2) RS evidence (`pentest/disposition.yaml` — genuine not-required disposition); (3) RC evidence (`recovery/backup-procedure.yaml` — real daily pg_dump backup, honestly flags no restore drill has ever been run). axios/react-router-dom findings re-filed as `remediated`. **Final decision: PASS** (`.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml`), independently confirmed via `appsec-sdk gate.check fr15-sse-auth` → exit 0. All 6 CSF functions PASS, 0 critical/high findings, redaction attested. Real residual risk shipping with this PASS: FR15-SSE-001 (medium) and FR15-SSE-004 (low) — both backlogged.
+
+### Retrospective
+
+**What went well:**
+- FR-16, FR-17, and NFR-09 landed cleanly with full Playwright E2E + axe coverage running in CI — no manual verification needed for any of the three.
+- FR-15's core fix (token out of the URL, into the `Authorization` header via a fetch-based stream) worked correctly on the first real test — live curl against the local stack confirmed the old `?token=` contract is rejected, and the manual EventStream check confirmed a push arrives within ~1s of a status change.
+- The AppSec evidence backfill, while heavier than expected, paid for itself: it caught two real production-dependency CVEs (`axios`, `react-router-dom`) that were completely unrelated to FR-15's actual code change — a good example of security tooling surfacing real value beyond the task that triggered it.
+- Using the local docker-compose stack as the target for headers/DAST-adjacent checks worked well given this project has no separate staging environment.
+
+**Problems encountered:**
+- Several AppSec/QA governance hooks fired on false positives this sprint — naive keyword scanning tripped on quoted historical status text, a commit message containing the word "vitest", and a shared test-account password that had to be disclosed to give login instructions. None were real issues; each required a quick investigation to confirm before moving on.
+- The AppSec evidence-validator agent's first re-validation pass declared `PASS` but omitted required schema fields (the redaction-attestation block, in particular) — the deterministic `appsec-sdk gate.check` disagreed and caught it. Lesson: verify agent-declared verdicts against the deterministic checker, don't trust the self-report alone.
+- Tried to inspect a long-lived SSE connection's network response body via a blocking tool call — this hung for ~55 minutes since the stream never terminates. Should have used a non-blocking approach (e.g. attaching a listener to the page's own EventSource) from the start.
+- The manual SSE-push test was initially confusing: a test task due "today" didn't affect the reminder message at all. Root cause: FR-07's reminder logic uses a 4am-to-4am day window, and a task due at midnight (the default when picking a date with no time) falls in the *previous* day's window, not the one the UI implies. Not a bug in FR-15, but a non-obvious FR-07 quirk worth remembering for future manual reminder testing.
+
+**New findings (added to backlog):**
+- `FR15-SSE-001` (medium) — SSE reminder stream has no per-user connection cap or rate limit; can exhaust the DB connection pool.
+- `FR15-SSE-004` (low) — logout doesn't terminate an already-open SSE stream (bounded by the existing 15-min access-token TTL).
+- DAST baseline scanning infra doesn't exist in this repo yet — needed before any future full release-readiness AppSec audit.
+
+**Spec drift check:** None found. `docs/api-spec.md` and `docs/frontend-spec.md` describe the reminder stream and view-mode/reorder/a11y surfaces at an architectural level that didn't reference the old buggy `?token=` behavior or the removed Task Board option, so nothing needed correcting.
+
+</details>
 
 <details>
 <summary>Sprint 2 — Frontend polish: mobile layout, drag-and-drop, and micro-interactions (2026-04-10 to 2026-04-20)</summary>
