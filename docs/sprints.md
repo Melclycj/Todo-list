@@ -17,7 +17,7 @@
 
 | # | Task | Req | Status |
 |---|------|-----|--------|
-| 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream needs in-browser check | FR-15 | Waiting for User |
+| 1 | Fix SSE reminder auth — token out of URL → Authorization header (fetch stream); AppSec-reviewed, security verified; end-to-end stream manually verified in-browser | FR-15 | Done |
 | 2 | Remove the non-functional "Task Board" view option + its dead code | FR-16 | Done |
 | 3 | Reorder Undo (Alt+↑/↓ E2E'd) + subtask-delete confirm (E2E); status-undo removed (forward-only state machine); task/topic delete confirm | FR-17 | Done |
 | 4 | Accessibility baseline — aria-labels, keyboard reorder (Alt+↑/↓), drawer role+Esc+full focus-trap, archive keyboard, contrast token, focus rings; axe 0 serious/critical at 320/768/1440 (CI) | NFR-09 | Done |
@@ -25,6 +25,10 @@
 > Scope derived from the 2026-06 UI plan (`docs/audits/ui-plan-2026-06-20/PLAN.md`). P1/P2 items from that plan are in the backlog below.
 >
 > **CI verification (added via QA, advisory):** FR-16, FR-17 subtask-confirm + reorder-Undo, FR-15 stream-200, NFR-09 axe (0 serious/critical on login/tasks/archive/recurring × 320/768/1440), keyboard reorder (Alt+↑/↓), and the drawer focus-trap now have Playwright E2E running in CI on push (`.github/workflows/ci.yml` `e2e` job) — all green. **Still needing a human eyeball:** only FR-15's real-time stream round-trip (status change → banner < 1s) — verified-by-construction (stream connects ✅ + push wired ✅), but a reliable E2E is precluded by FR-07's time-of-day reminder window.
+>
+> **AppSec evidence backfill (done, 2026-07-01):** formalized FR-15's "AppSec-reviewed" claim into `.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml` — **decision: BLOCKED** (not a fail on the fix itself: code-review PASS + live-curl confirmed the old `?token=` contract now returns 401). Blocked on 4 items, none of which are about FR-15's correctness: (1) missing `overlay-websocket/checklist.yaml` — process artifact not generated in this scoped run; (2) CSF Respond coverage missing; (3) CSF Recover coverage missing — both are org-wide evidence categories out of scope for a single-feature backfill; (4) severity-floor FAIL — 2 real, FR-15-unrelated production-dependency CVEs: `axios` (SSRF/prototype-pollution) and `react-router-dom`→`react-router` (deserialization RCE / redirect XSS), both `fixAvailable`. DAST baseline was explicitly skipped (no ZAP wrapper infra yet; candidate for backlog). **Dependency fix (done, 2026-07-01, commit `4122474`):** `axios` bumped 1.13.6→1.18.1, `react-router-dom` bumped 7.13.1→7.18.1 in `frontend/package.json`. Verified: `npm audit` no longer lists either package (remaining 11 findings are the pre-existing dev/build-tooling ones, `computed_risk: low`, already triaged); `tsc -b && vite build` clean; frontend unit-test suite 48/48 passing; local docker stack rebuilt and reachable.
+>
+> **AppSec full close-out (done, 2026-07-02):** all 3 remaining blockers cleared — (1) `overlay-websocket/checklist.yaml` written (5 items, surfaced one new low finding FR15-SSE-004: logout doesn't kill an already-open SSE stream's stateless JWT, bounded by the existing 15-min token TTL); (2) RS evidence (`pentest/disposition.yaml` — genuine not-required disposition); (3) RC evidence (`recovery/backup-procedure.yaml` — real daily pg_dump backup, honestly flags no restore drill has ever been run). axios/react-router-dom findings re-filed as `remediated`. **Final decision: PASS** (`.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml`), independently confirmed via `appsec-sdk gate.check fr15-sse-auth` → exit 0. All 6 CSF functions PASS, 0 critical/high findings, redaction attested. Real residual risk shipping with this PASS (not blocking, but worth prioritizing): FR15-SSE-001 (medium — SSE stream has no per-user connection cap/rate limit, can exhaust the DB pool) and FR15-SSE-004 (low — logout doesn't actively kill open SSE streams). Suggest picking FR15-SSE-001 up as a future sprint task.
 
 ---
 
@@ -39,6 +43,8 @@
 - NFR-08: Consistent API error envelope (401/422/429)
 - NFR-10: Design-token integrity — wire `--status-*` tokens, scrim token, remove dead code _(2026-06 UI plan, P1; unblocks FR-18)_
 - FR-18: Premium visual direction "Slate Studio" (locked) _(2026-06 UI plan, P1; do after NFR-10)_
+- AppSec: SSE `/reminder/stream` has no per-user connection cap / rate limit — one account can exhaust the DB connection pool and deny service to all users (medium, finding `FR15-SSE-001`, `.appsec/findings/fr15-sse-auth/`)
+- AppSec: `/auth/logout` doesn't terminate an already-open SSE stream (stateless JWT, no blocklist) — bounded by the existing 15-min access-token TTL, not urgent (low, finding `FR15-SSE-004`, `.appsec/findings/fr15-sse-auth/`)
 - FR-19: Auth first-impression redesign _(2026-06 UI plan, P1)_
 - NFR-11: Error states, error boundary & visual polish _(2026-06 UI plan, P2)_
 

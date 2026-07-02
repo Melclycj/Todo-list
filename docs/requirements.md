@@ -332,7 +332,7 @@ To Do → In Progress → Done
 **Success Criteria:**
 - [x] An authenticated user's `GET /reminder/stream` connection succeeds (no `401`) — E2E asserts 200; the push path is wired (`task_service` calls `sse_manager.notify_user(user_id)` on status change)
 - [x] The access token is no longer transmitted in a URL query string (now sent in the `Authorization` header via a fetch-based stream)
-- [ ] With a valid session, real-time delivery works over the stream (reminder updates within 1s of a status change per FR-07) — _covered by construction (stream connects ✅ + push wired ✅); the end-to-end round-trip is a manual check — a reliable E2E is precluded by FR-07's time-of-day / today-window message logic_
+- [x] With a valid session, real-time delivery works over the stream (reminder updates within 1s of a status change per FR-07) — _manually verified 2026-07-02: user watched Chrome DevTools' EventStream tab on `/reminder/stream` and confirmed a new push message arrives within ~1s of a task status change. A reliable E2E remains impractical due to FR-07's time-of-day / today-window message logic._
 - [x] The unit test that asserts the old `?token=` URL is updated to the new contract
 - [x] No access token appears in server access logs for the stream endpoint (access log records path only; token never in URL — AppSec-confirmed)
 - [x] The change is reviewed through AppSec (authentication + token-in-URL handling)
