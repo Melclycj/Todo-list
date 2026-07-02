@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createRecurringTemplate,
+  deleteRecurringTemplate,
   getRecurringTemplates,
   stopRecurringTemplate,
   updateRecurringTemplate,
@@ -36,6 +37,17 @@ export function useUpdateRecurringTemplate() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: RecurringUpdatePayload }) =>
       updateRecurringTemplate(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [RECURRING_QUERY_KEY] })
+    },
+  })
+}
+
+export function useDeleteRecurringTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteRecurringTemplate(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [RECURRING_QUERY_KEY] })
     },

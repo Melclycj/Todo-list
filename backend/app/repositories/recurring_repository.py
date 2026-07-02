@@ -4,7 +4,7 @@ Recurring template repository — queries for recurring task templates and insta
 import uuid
 from datetime import datetime
 
-from sqlalchemy import insert as sa_insert, select, update
+from sqlalchemy import delete as sa_delete, insert as sa_insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -99,6 +99,20 @@ class RecurringRepository:
             .with_for_update(skip_locked=True)
         )
         return list(result.scalars().all())
+
+    async def delete(self, template_id: uuid.UUID) -> None:
+        """Hard-delete a recurring template, its instance links, and topic associations."""
+        await self._session.execute(
+            sa_delete(RecurringInstance).where(RecurringInstance.template_id == template_id)
+        )
+        await self._session.execute(
+            sa_delete(recurring_template_topics).where(
+                recurring_template_topics.c.template_id == template_id
+            )
+        )
+        await self._session.execute(
+            sa_delete(RecurringTemplate).where(RecurringTemplate.id == template_id)
+        )
 
     async def link_instance(
         self, template_id: uuid.UUID, task_id: uuid.UUID

@@ -51,6 +51,37 @@ def advance_next_run_at(
     raise AppError(f"Unknown frequency: {frequency}")
 
 
+def reverse_next_run_at(
+    next_run_at: datetime, frequency: RecurringFrequency
+) -> datetime:
+    """
+    Derive the last scheduled date by reversing one frequency step.
+
+    This is the inverse of advance_next_run_at — it computes the date from
+    which next_run_at was originally advanced.
+    """
+    if frequency == RecurringFrequency.DAILY:
+        return next_run_at - timedelta(days=1)
+
+    if frequency == RecurringFrequency.WEEKLY:
+        return next_run_at - timedelta(days=7)
+
+    if frequency == RecurringFrequency.FORTNIGHTLY:
+        return next_run_at - timedelta(days=14)
+
+    if frequency == RecurringFrequency.MONTHLY:
+        year = next_run_at.year
+        month = next_run_at.month - 1
+        if month < 1:
+            month = 12
+            year -= 1
+        max_day = monthrange(year, month)[1]
+        day = min(next_run_at.day, max_day)
+        return next_run_at.replace(year=year, month=month, day=day)
+
+    raise AppError(f"Unknown frequency: {frequency}")
+
+
 # ---------------------------------------------------------------------------
 # RecurringService
 # ---------------------------------------------------------------------------
@@ -155,12 +186,12 @@ class RecurringService:
         self, now: datetime | None = None
     ) -> int:
         """
-        For each active recurring template where next_run_at <= now:
-          1. Create a new task instance with the appropriate due_date.
-          2. Advance next_run_at by the frequency.
+        For each active recurring template where next_run_at <= now,
+        create ALL overdue instances (catching up missed periods) and
+        advance next_run_at past now.
 
         Due date logic:
-          - daily:  due_date = now (the day the task is created)
+          - daily:  due_date = the scheduled date (next_run_at for each period)
           - others: due_date = template.next_run_at (the scheduled date)
 
         Returns:
@@ -173,41 +204,40 @@ class RecurringService:
         count = 0
 
         for template in due_templates:
-            # Determine due_date for the new task instance
-            if template.frequency == RecurringFrequency.DAILY:
-                task_due_date = now
-            else:
-                task_due_date = template.next_run_at
-
-            # Build the instance
-            instance_title = build_instance_title(template.title, now)
+            current_run_at = template.next_run_at
             topic_ids = [t.id for t in (template.topics or [])]
 
-            task = await self._uow.tasks.create(
-                user_id=template.user_id,
-                title=instance_title,
-                description=template.description,
-                due_date=task_due_date,
-                status=TaskStatus.TODO,
-                archived=False,
-                topic_ids=topic_ids,
-            )
+            # Create instances for every overdue period until caught up
+            while current_run_at <= now:
+                task_due_date = current_run_at
 
-            # Link as recurring instance (flush only)
-            await self._uow.templates.link_instance(
-                template_id=template.id, task_id=task.id
-            )
+                instance_title = build_instance_title(template.title, current_run_at)
 
-            # Advance next_run_at (flush only)
-            new_next_run_at = advance_next_run_at(template.next_run_at, template.frequency)
+                task = await self._uow.tasks.create(
+                    user_id=template.user_id,
+                    title=instance_title,
+                    description=template.description,
+                    due_date=task_due_date,
+                    status=TaskStatus.TODO,
+                    archived=False,
+                    topic_ids=topic_ids,
+                )
+
+                await self._uow.templates.link_instance(
+                    template_id=template.id, task_id=task.id
+                )
+
+                current_run_at = advance_next_run_at(current_run_at, template.frequency)
+                count += 1
+
+            # Advance next_run_at to the first future period
             await self._uow.templates.update(
                 template_id=template.id,
-                next_run_at=new_next_run_at,
+                next_run_at=current_run_at,
             )
 
-            # Commit per template — each spawn is independently atomic
+            # Commit per template — each template's catch-up is atomic
             await self._uow.commit()
-            count += 1
 
         return count
 
@@ -234,6 +264,27 @@ class RecurringService:
         )
         await self._uow.commit()
         return result
+
+    # ------------------------------------------------------------------
+    # Delete template
+    # ------------------------------------------------------------------
+
+    async def delete_template(
+        self, template_id: uuid.UUID, user_id: uuid.UUID
+    ) -> None:
+        """
+        Permanently delete a recurring template.
+
+        Instance links are removed but the spawned tasks themselves are kept.
+        """
+        template = await self._uow.templates.get_by_id(template_id)
+        if template is None:
+            raise LookupError("Recurring template not found")
+        if template.user_id != user_id:
+            raise PermissionError("Not authorized")
+
+        await self._uow.templates.delete(template_id)
+        await self._uow.commit()
 
     # ------------------------------------------------------------------
     # Update template
@@ -268,8 +319,13 @@ class RecurringService:
             update_fields["title"] = title
         if description is not None:
             update_fields["description"] = description
-        if frequency is not None:
+        if frequency is not None and frequency != template.frequency:
             update_fields["frequency"] = frequency
+            # Recalculate next_run_at so the change applies from the next
+            # instance onward.  Derive the last scheduled date by reversing
+            # one old-frequency step, then advance by one new-frequency step.
+            last_scheduled = reverse_next_run_at(template.next_run_at, template.frequency)
+            update_fields["next_run_at"] = advance_next_run_at(last_scheduled, frequency)
         if next_run_at is not None:
             update_fields["next_run_at"] = next_run_at
         if topic_ids is not None:

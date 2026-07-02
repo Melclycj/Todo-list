@@ -18,9 +18,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import {
   useRecurringTemplates,
+  useDeleteRecurringTemplate,
   useStopRecurringTemplate,
   useUpdateRecurringTemplate,
 } from '@/hooks/useRecurring'
+import { RowContextMenu, TASK_DELETE_ACTION, RECURRING_STOP_ACTION } from '@/features/tasks/RowContextMenu'
+import { BulkDeleteDialog } from '@/features/tasks/BulkDeleteDialog'
 import { useTopics } from '@/hooks/useTopics'
 import { useRecurringColumnResize } from '@/hooks/useRecurringColumnResize'
 import type { RecurringColumnKey } from '@/hooks/useRecurringColumnResize'
@@ -265,6 +268,7 @@ function RecurringTableHeader({ widths, onStartDrag, isEditMode }: RecurringTabl
     <thead className="sticky top-0 z-10 bg-muted">
       <tr>
         {isEditMode && <th className="w-10 border-b border-border" />}
+        {!isEditMode && <th style={{ width: ACTIONS_COLUMN_WIDTH }} className="border-b border-border" />}
         {COLUMNS.map((col) => (
           <th
             key={col.key}
@@ -288,6 +292,7 @@ function RecurringTableHeader({ widths, onStartDrag, isEditMode }: RecurringTabl
 // ---------------------------------------------------------------------------
 
 const CHECKBOX_COLUMN_WIDTH = 40
+const ACTIONS_COLUMN_WIDTH = 32
 
 interface TemplateRowProps {
   template: RecurringTemplate
@@ -299,6 +304,10 @@ interface TemplateRowProps {
 
 function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect }: TemplateRowProps) {
   const { mutate: update } = useUpdateRecurringTemplate()
+  const { mutate: deleteTemplate, isPending: isDeletePending } = useDeleteRecurringTemplate()
+  const { mutate: stopTemplate } = useStopRecurringTemplate()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmStop, setConfirmStop] = useState(false)
   const isInactive = !template.is_active
 
   function saveField(payload: RecurringUpdatePayload) {
@@ -311,6 +320,7 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
   const nextRunInput = template.next_run_at ? template.next_run_at.slice(0, 10) : ''
 
   return (
+    <>
     <tr className={cn('group border-b border-border hover:bg-muted/20 transition-colors', isInactive && 'opacity-50')}>
       {/* Checkbox (edit mode only) */}
       {isEditMode && (
@@ -321,6 +331,20 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
             onChange={() => onToggleSelect(template.id)}
             disabled={isInactive}
             className="accent-primary h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
+          />
+        </td>
+      )}
+
+      {/* Context menu (normal mode only) */}
+      {!isEditMode && (
+        <td style={{ width: ACTIONS_COLUMN_WIDTH }} className="py-2 pl-2 pr-0">
+          <RowContextMenu
+            actions={[
+              TASK_DELETE_ACTION(() => setConfirmDelete(true)),
+              ...(template.is_active
+                ? [RECURRING_STOP_ACTION(() => setConfirmStop(true))]
+                : []),
+            ]}
           />
         </td>
       )}
@@ -384,6 +408,48 @@ function TemplateRow({ template, widths, isEditMode, isSelected, onToggleSelect 
         />
       </td>
     </tr>
+
+    <BulkDeleteDialog
+      open={confirmDelete}
+      count={1}
+      isPending={isDeletePending}
+      onConfirm={() => {
+        deleteTemplate(template.id, {
+          onSuccess: () => { toast.success('Template deleted'); setConfirmDelete(false) },
+          onError: () => toast.error('Failed to delete template'),
+        })
+      }}
+      onCancel={() => setConfirmDelete(false)}
+    />
+
+    <Dialog open={confirmStop} onOpenChange={setConfirmStop}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Stop recurring template?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          No new instances will be created. Existing tasks are unaffected.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setConfirmStop(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              stopTemplate(template.id, {
+                onSuccess: () => { toast.success('Template stopped'); setConfirmStop(false) },
+                onError: () => toast.error('Failed to stop template'),
+              })
+            }}
+          >
+            Stop
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
@@ -402,7 +468,7 @@ export function RecurringPage() {
 
   const totalWidth =
     Object.values(widths).reduce((sum, w) => sum + w, 0) +
-    (isEditMode ? CHECKBOX_COLUMN_WIDTH : 0)
+    (isEditMode ? CHECKBOX_COLUMN_WIDTH : ACTIONS_COLUMN_WIDTH)
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -447,7 +513,7 @@ export function RecurringPage() {
           </Button>
           {/* Edit mode toolbar — mirrors TaskEditToolbar in Active Tasks */}
           {!isEditMode ? (
-            <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} title="Select to stop">
+            <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} title="Select to stop" aria-label="Select to stop">
               <Pencil size={14} />
             </Button>
           ) : (
@@ -458,11 +524,12 @@ export function RecurringPage() {
                 onClick={() => setConfirmStop(true)}
                 disabled={selectedIds.size === 0}
                 title="Stop selected"
+                aria-label="Stop selected"
                 className={cn(selectedIds.size === 0 && 'opacity-50 cursor-not-allowed')}
               >
                 <Trash2 size={14} />
               </Button>
-              <Button variant="outline" size="sm" onClick={exitEditMode} title="Done">
+              <Button variant="outline" size="sm" onClick={exitEditMode} title="Done" aria-label="Done">
                 <Check size={14} />
               </Button>
             </div>

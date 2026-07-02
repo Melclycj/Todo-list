@@ -86,7 +86,7 @@ export function LoginPage() {
 
         <p className="text-sm text-center text-muted-foreground mt-4">
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-primary hover:underline">
+          <Link to="/register" className="text-primary underline underline-offset-2">
             Register
           </Link>
         </p>

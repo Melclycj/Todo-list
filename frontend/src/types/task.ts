@@ -2,6 +2,26 @@ import type { Topic } from './topic'
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 
+export interface Subtask {
+  id: string
+  task_id: string
+  title: string
+  status: TaskStatus
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SubtaskCreatePayload {
+  title: string
+}
+
+export interface SubtaskUpdatePayload {
+  title?: string
+  status?: TaskStatus
+  sort_order?: number
+}
+
 export interface Task {
   id: string
   title: string
@@ -17,6 +37,9 @@ export interface Task {
   updated_at: string
   topics: Topic[]
   recurring_template_id: string | null
+  subtask_count: number
+  subtask_done_count: number
+  subtasks: Subtask[]
 }
 
 export interface TaskCreatePayload {
@@ -45,8 +68,6 @@ export interface TaskOrderUpdatePayload {
 }
 
 export type TaskFilterWindow = 'today' | '3days' | 'week' | 'all'
-
-export type ViewMode = 'table' | 'board'
 
 export interface TaskFilterParams {
   window?: TaskFilterWindow

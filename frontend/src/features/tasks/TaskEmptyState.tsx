@@ -49,7 +49,7 @@ export function TaskEmptyState({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+    <div className="flex flex-col items-center justify-center py-16 text-center gap-3 animate-[fadeIn_300ms_ease-out]">
       {icon}
       <div>
         <p className="font-medium text-foreground">{heading}</p>

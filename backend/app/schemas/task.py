@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.task import TaskStatus
+from app.schemas.subtask import SubtaskResponse
 from app.schemas.topic import TopicResponse
 
 
@@ -52,6 +53,15 @@ class TaskOrderUpdateRequest(BaseModel):
     manual_order: int
 
 
+class TaskBatchReorderItem(BaseModel):
+    id: uuid.UUID
+    manual_order: int
+
+
+class TaskBatchReorderRequest(BaseModel):
+    tasks: list[TaskBatchReorderItem] = Field(..., min_length=1, max_length=50)
+
+
 class TaskResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -66,6 +76,9 @@ class TaskResponse(BaseModel):
     manual_order: int | None
     topics: list[TopicResponse]
     recurring_template_id: uuid.UUID | None = None
+    subtask_count: int = 0
+    subtask_done_count: int = 0
+    subtasks: list[SubtaskResponse] = []
     created_at: datetime
     updated_at: datetime
 

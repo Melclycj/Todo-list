@@ -7,6 +7,7 @@ all writes for a logical operation are complete.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.recurring_repository import RecurringRepository
+from app.repositories.subtask_repository import SubtaskRepository
 from app.repositories.task_repository import TaskRepository
 from app.repositories.topic_repository import TopicRepository
 from app.repositories.user_repository import RefreshTokenRepository, UserRepository
@@ -16,6 +17,7 @@ class UnitOfWork:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self.tasks = TaskRepository(session)
+        self.subtasks = SubtaskRepository(session)
         self.topics = TopicRepository(session)
         self.users = UserRepository(session)
         self.tokens = RefreshTokenRepository(session)

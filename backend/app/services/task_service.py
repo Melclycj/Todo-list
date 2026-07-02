@@ -252,6 +252,21 @@ class TaskService:
         await self._uow.commit()
         return result
 
+    async def batch_reorder_tasks(
+        self,
+        user_id: uuid.UUID,
+        task_orders: list[tuple[uuid.UUID, int]],
+    ) -> None:
+        """Batch update manual_order for multiple tasks. All must belong to the user."""
+        for task_id, _ in task_orders:
+            task = await self._uow.tasks.get_by_id(task_id)
+            if task is None:
+                raise LookupError(f"Task {task_id} not found")
+            if task.user_id != user_id:
+                raise PermissionError("Not authorized")
+        await self._uow.tasks.batch_update_order(task_orders)
+        await self._uow.commit()
+
     # ------------------------------------------------------------------
     # Delete
     # ------------------------------------------------------------------

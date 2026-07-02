@@ -76,6 +76,12 @@ class Task(Base):
     recurring_instance: Mapped["RecurringInstance | None"] = relationship(  # noqa: F821
         "RecurringInstance", back_populates="task", uselist=False
     )
+    subtasks: Mapped[list["Subtask"]] = relationship(  # noqa: F821
+        "Subtask",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="Subtask.sort_order",
+    )
 
     @property
     def recurring_template_id(self) -> "uuid.UUID | None":
@@ -83,3 +89,12 @@ class Task(Base):
         if self.recurring_instance is not None:
             return self.recurring_instance.template_id
         return None
+
+    @property
+    def subtask_count(self) -> int:
+        return len(self.subtasks)
+
+    @property
+    def subtask_done_count(self) -> int:
+        from app.models.task import TaskStatus as _TS
+        return sum(1 for s in self.subtasks if s.status == _TS.DONE)

@@ -29,7 +29,7 @@ export function TaskDueDateDisplay({ dueDate, isDone }: TaskDueDateDisplayProps)
         overdue ? 'text-destructive' : 'text-muted-foreground'
       )}
     >
-      {overdue && <AlertCircle size={11} />}
+      {overdue && <AlertCircle size={11} className="animate-pulse" />}
       {label}
     </span>
   )

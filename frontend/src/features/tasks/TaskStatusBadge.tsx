@@ -16,24 +16,28 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 
 interface TaskStatusBadgeProps {
   status: TaskStatus
+  label?: string
   onClick?: (e: React.MouseEvent) => void
   disabled?: boolean
+  size?: 'default' | 'sm'
 }
 
-export function TaskStatusBadge({ status, onClick, disabled }: TaskStatusBadgeProps) {
+export function TaskStatusBadge({ status, label, onClick, disabled, size = 'default' }: TaskStatusBadgeProps) {
+  const displayLabel = label ?? STATUS_LABEL[status]
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'px-2 py-0.5 rounded-full text-xs font-medium border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap',
+        'rounded-full font-medium border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap',
+        size === 'sm' ? 'px-1.5 py-0 text-[10px]' : 'px-2 py-0.5 text-xs',
         STATUS_STYLES[status],
-        disabled ? 'cursor-default' : 'cursor-pointer'
+        disabled ? 'cursor-default' : 'cursor-pointer active:scale-95'
       )}
-      aria-label={`Status: ${STATUS_LABEL[status]}`}
+      aria-label={`Status: ${displayLabel}`}
     >
-      {STATUS_LABEL[status]}
+      {displayLabel}
     </button>
   )
 }

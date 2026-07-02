@@ -56,16 +56,18 @@ export function TaskTopicSelector({ taskId, selectedTopics }: TaskTopicSelectorP
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <div
+        <button
+          type="button"
           onClick={(e) => e.stopPropagation()}
-          className="cursor-pointer min-h-[1.25rem] rounded px-0.5 -mx-0.5 hover:bg-accent/40"
+          aria-label="Edit topics"
+          className="cursor-pointer min-h-[1.25rem] rounded px-0.5 -mx-0.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {selectedTopics.length > 0 ? (
             <TaskTopicTags topics={selectedTopics} maxVisible={3} />
           ) : (
             <span className="text-muted-foreground/40 italic text-xs">Add topics</span>
           )}
-        </div>
+        </button>
       </PopoverTrigger>
       <PopoverContent
         className="w-52 p-2"

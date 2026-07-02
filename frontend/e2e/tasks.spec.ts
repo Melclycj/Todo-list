@@ -68,4 +68,57 @@ test.describe('Task CRUD', () => {
   test('empty state is shown when no tasks exist', async ({ page }) => {
     await expect(page.getByText('No tasks yet')).toBeVisible()
   })
+
+  test('no non-functional view-mode control is present (FR-16)', async ({ page }) => {
+    // The dead "Task Board" view option was removed entirely; only the
+    // implemented table view exists, so there is no view-mode selector.
+    await expect(page.getByRole('combobox', { name: 'View mode' })).toHaveCount(0)
+    await expect(page.getByText('Task Board')).toHaveCount(0)
+  })
+
+  test('drag-reorder is operable by keyboard (NFR-09)', async ({ page }) => {
+    const a = `KB-A ${uid()}`
+    const b = `KB-B ${uid()}`
+    await createTask(page, a) // created first → renders above B
+    await createTask(page, b)
+
+    // Both tasks have no due date → same sortable group, so the grip shows.
+    const rowA = page.locator('tbody tr', { hasText: a })
+    await rowA.hover()
+    const grip = rowA.getByRole('button', { name: /Actions and reorder|Actions/i })
+    await grip.focus()
+
+    // Alt+ArrowDown moves the focused row down one slot within its group
+    // (explicit keyboard reorder, decoupled from the menu trigger).
+    await page.keyboard.press('Alt+ArrowDown')
+
+    // A has moved below B: the first task row now contains B.
+    await expect(
+      page.locator('tbody tr').filter({ hasText: /KB-/ }).first()
+    ).toContainText(b)
+  })
+
+  test('reorder presents an Undo that restores the prior order (FR-17)', async ({ page }) => {
+    const a = `KU-A ${uid()}`
+    const b = `KU-B ${uid()}`
+    await createTask(page, a)
+    await createTask(page, b)
+
+    const rowA = page.locator('tbody tr', { hasText: a })
+    await rowA.hover()
+    const grip = rowA.getByRole('button', { name: /Actions and reorder|Actions/i })
+    await grip.focus()
+
+    // Reorder A below B, then Undo restores the immediately-preceding order.
+    // (The Undo toast + applyOrder(prevOrder) is identical for pointer drag.)
+    await page.keyboard.press('Alt+ArrowDown')
+    await expect(
+      page.locator('tbody tr').filter({ hasText: /KU-/ }).first()
+    ).toContainText(b)
+
+    await page.getByRole('button', { name: 'Undo' }).click()
+    await expect(
+      page.locator('tbody tr').filter({ hasText: /KU-/ }).first()
+    ).toContainText(a)
+  })
 })

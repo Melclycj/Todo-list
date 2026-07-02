@@ -1,6 +1,6 @@
 # API Specification
 
-> All endpoints prefixed with `/api/v1/`
+> All endpoints prefixed with `/api/v1/` — except the health check (`/api/health`).
 
 ---
 
@@ -31,7 +31,7 @@ backend/
 
 ## Standard API Response Format
 
-All responses use this envelope:
+Application (non-error and enveloped-error) responses use this envelope:
 
 ```json
 {
@@ -43,7 +43,12 @@ All responses use this envelope:
 ```
 
 - `meta` only on paginated responses.
-- On error: `data` is `null`, `error` contains a message string.
+- On enveloped errors (`AppError`, `LookupError`, `PermissionError`, unhandled `Exception`): `data` is `null`, `error` contains a message string.
+- **Not enveloped** — these bypass the envelope and return their framework-default shape (see Error Handling below):
+  - `401` auth failures (`HTTPException`) → `{"detail": "..."}`
+  - `422` request validation (`RequestValidationError`) → `{"detail": [ ... ]}` (`error` is a list of objects, not a string)
+  - `429` rate-limited (`RateLimitExceeded`) → slowapi default body
+  - `GET /api/health` → `{"status": ..., "db": ...}`
 
 ---
 
@@ -66,10 +71,12 @@ All responses use this envelope:
 | PATCH | `/tasks/{id}` | Update task fields |
 | DELETE | `/tasks/{id}` | Delete task |
 | PATCH | `/tasks/{id}/status` | Update task status |
-| PATCH | `/tasks/{id}/order` | Update manual sort order |
+| PATCH | `/tasks/{id}/order` | Update manual sort order (single task) |
+| POST | `/tasks/reorder` | Batch update manual sort order (used by drag-and-drop) |
+| POST | `/tasks/bulk-delete` | Delete multiple tasks in one request (1–50 ids) |
 
 **Filter query params for `GET /tasks`:**
-- `window`: `today` | `3days` | `week` | `all`
+- `window`: `today` | `3days` | `week` | `all` — unrecognized values are currently **ignored** (treated as no window filter), not rejected
 - `topic_id`: UUID
 - `q`: search query string
 - `page`: integer, default `1`
@@ -95,7 +102,16 @@ All responses use this envelope:
 | GET | `/recurring` | List recurring templates |
 | POST | `/recurring` | Create recurring template |
 | PATCH | `/recurring/{id}` | Update template |
-| DELETE | `/recurring/{id}` | Stop template permanently |
+| POST | `/recurring/{id}/stop` | Stop template (is_active=false) |
+| DELETE | `/recurring/{id}` | Delete template permanently |
+
+### Subtasks
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/tasks/{task_id}/subtasks` | List subtasks for a task |
+| POST | `/tasks/{task_id}/subtasks` | Create subtask under a task |
+| PATCH | `/tasks/{task_id}/subtasks/{subtask_id}` | Update subtask (title, status, sort_order) |
+| DELETE | `/tasks/{task_id}/subtasks/{subtask_id}` | Delete subtask |
 
 ### Reminder
 | Method | Path | Description |
@@ -106,7 +122,7 @@ All responses use this envelope:
 ### Health
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/health` | Server + DB status (no auth) |
+| GET | `/api/health` | Server + DB status (no auth, no `v1` prefix, non-enveloped; returns `503` if DB unreachable) |
 
 ---
 
@@ -115,7 +131,7 @@ All responses use this envelope:
 - JWT access tokens: 15 min expiry
 - JWT refresh tokens: 7 days, HTTP-only cookie
 - Passwords hashed with bcrypt
-- Protected endpoints use `get_current_user` dependency
+- Protected endpoints use the `get_current_user_id` dependency (returns the authenticated user's `UUID`)
 - Refresh tokens stored in DB for revocation
 
 ---
@@ -136,8 +152,7 @@ All times use server timezone (`SCHEDULER_TIMEZONE` env var). Timestamps stored 
 
 | Job | Schedule | Description |
 |-----|----------|-------------|
-| `archive_done_tasks` | Daily 4:00 AM | Archive tasks with `status=done` and `done_at < today's 4am` |
-| `create_recurring_instances` | Daily 4:00 AM | Create new task instances from active templates |
+| `archive_and_spawn` | Daily 4:00 AM | One job that runs two steps in sequence: (1) archive `done` tasks past their 4am boundary, then (2) create new task instances from active recurring templates |
 | `push_reminder_at_6pm` | Daily 6:00 PM | Broadcast reminder via SSE |
 | `push_reminder_at_1am` | Daily 1:00 AM | Broadcast reminder via SSE |
 
@@ -147,26 +162,57 @@ All times use server timezone (`SCHEDULER_TIMEZONE` env var). Timestamps stored 
 
 Global middleware catches all exceptions:
 
-| Exception | HTTP Status | User Message |
+| Exception | HTTP Status | Response body |
 |-----------|-------------|--------------|
-| `AppError` | 400 | Business rule message |
-| `LookupError` | 404 | "Resource not found" |
-| `PermissionError` | 403 | "Not authorized" |
-| Any `Exception` | 500 | "An internal server error occurred" |
+| `AppError` | 400 | Enveloped — business rule message in `error` |
+| `LookupError` | 404 | Enveloped — "Resource not found" |
+| `PermissionError` | 403 | Enveloped — "Not authorized" |
+| Any `Exception` | 500 | Enveloped — "An internal server error occurred" |
+| `HTTPException` (auth) | 401 | **Not enveloped** — FastAPI default `{"detail": "..."}` |
+| `RequestValidationError` | 422 | **Not enveloped** — `{"detail": [ ... ]}` |
+| `RateLimitExceeded` | 429 | **Not enveloped** — slowapi default body |
 
-Full tracebacks are logged server-side only.
+Only `AppError`, `LookupError`, `PermissionError`, and unhandled `Exception` are mapped to the standard envelope (`middleware/error_handler.py`). `HTTPException`, validation, and rate-limit responses are returned by FastAPI/slowapi defaults and do **not** use the envelope. Full tracebacks are logged server-side only.
 
 ---
 
 ## Environment Variables
 
 ```
+# Database
 DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/todoapp
+TEST_DATABASE_URL=postgresql+asyncpg://user:pass@db:5432/todoapp_test
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=20
+DB_POOL_TIMEOUT=30
+DB_POOL_RECYCLE=1800
+
+# Auth (SECRET_KEY is required — the app refuses to start without it)
 SECRET_KEY=<long random string>
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
-DB_POOL_SIZE=10
-DB_MAX_OVERFLOW=20
+
+# CORS (comma-separated list)
+ALLOWED_ORIGINS=http://localhost
+
+# Rate limiting (override with stricter values in production)
+RATE_LIMIT_ENABLED=true
+REGISTER_RATE_LIMIT=100/minute
+LOGIN_RATE_LIMIT=100/minute
+REFRESH_RATE_LIMIT=200/minute
+
+# Scheduler
 SCHEDULER_TIMEZONE=UTC
-VITE_API_BASE_URL=/api/v1   # frontend build-time
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=                          # empty = stderr only
+
+# Observability (Sentry)
+SENTRY_DSN=                        # empty = disabled
+SENTRY_TRACES_SAMPLE_RATE=0.2
+ENVIRONMENT=production
+
+# Frontend (build-time)
+VITE_API_BASE_URL=/api/v1
 ```

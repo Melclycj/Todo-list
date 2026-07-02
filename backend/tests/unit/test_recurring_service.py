@@ -22,6 +22,7 @@ from app.models.task import Task, TaskStatus
 from app.services.recurring_service import (
     RecurringService,
     advance_next_run_at,
+    reverse_next_run_at,
 )
 
 
@@ -382,6 +383,80 @@ class TestRecurringServiceCreateDueInstances:
         # topic_ids should include both topic IDs
         assert set(create_kwargs["topic_ids"]) == {topic1.id, topic2.id}
 
+    @pytest.mark.asyncio
+    async def test_catch_up_creates_all_overdue_instances(self):
+        """When a weekly template is 3 weeks overdue, all overdue + current instances are created."""
+        now = datetime(2026, 3, 17, 4, 0, 0, tzinfo=timezone.utc)
+        template = _make_template(
+            frequency=RecurringFrequency.WEEKLY,
+            next_run_at=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),  # 3 weeks ago
+            is_active=True,
+        )
+
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        mock_template_repo.get_due_templates.return_value = [template]
+
+        def _make_task(**kwargs):
+            t = Task()
+            t.id = uuid.uuid4()
+            t.title = kwargs.get("title", "t")
+            t.user_id = template.user_id
+            t.status = TaskStatus.TODO
+            t.archived = False
+            t.topics = []
+            return t
+
+        mock_task_repo.create.side_effect = lambda **kw: _make_task(**kw)
+
+        count = await service.create_due_instances(now=now)
+
+        # Feb 24, Mar 3, Mar 10, Mar 17 (all <= now) = 4 instances
+        assert count == 4
+        assert mock_task_repo.create.call_count == 4
+        assert mock_template_repo.link_instance.call_count == 4
+
+        # next_run_at should be advanced past now (2026-02-24 + 4 weeks = 2026-03-24)
+        update_kwargs = mock_template_repo.update.call_args[1]
+        expected_next = datetime(2026, 3, 24, 4, 0, 0, tzinfo=timezone.utc)
+        assert update_kwargs["next_run_at"] == expected_next
+
+    @pytest.mark.asyncio
+    async def test_catch_up_uses_scheduled_dates_for_titles(self):
+        """Catch-up instances use the scheduled period date, not now."""
+        now = datetime(2026, 3, 10, 4, 0, 0, tzinfo=timezone.utc)
+        template = _make_template(
+            frequency=RecurringFrequency.WEEKLY,
+            next_run_at=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),
+            is_active=True,
+            title="Review",
+        )
+
+        service, mock_template_repo, mock_task_repo = self._make_service()
+        mock_template_repo.get_due_templates.return_value = [template]
+
+        titles = []
+
+        def _make_task(**kwargs):
+            t = Task()
+            t.id = uuid.uuid4()
+            t.title = kwargs.get("title", "t")
+            t.user_id = template.user_id
+            t.status = TaskStatus.TODO
+            t.archived = False
+            t.topics = []
+            titles.append(kwargs.get("title", ""))
+            return t
+
+        mock_task_repo.create.side_effect = lambda **kw: _make_task(**kw)
+
+        await service.create_due_instances(now=now)
+
+        # Feb 24, Mar 3, Mar 10 (all <= now) = 3 instances
+        assert len(titles) == 3
+        assert "2026-02-24" in titles[0]
+        assert "2026-03-03" in titles[1]
+        assert "2026-03-10" in titles[2]
+
 
 # ---------------------------------------------------------------------------
 # RecurringService.stop_template
@@ -492,6 +567,43 @@ class TestAdvanceNextRunAtInvalidFrequency:
             advance_next_run_at(from_dt, FakeFreq())  # type: ignore
 
 
+class TestReverseNextRunAt:
+    """Tests for reverse_next_run_at — inverse of advance_next_run_at."""
+
+    def test_reverse_daily(self):
+        dt = datetime(2026, 2, 25, 4, 0, 0, tzinfo=timezone.utc)
+        result = reverse_next_run_at(dt, RecurringFrequency.DAILY)
+        assert result == datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc)
+
+    def test_reverse_weekly(self):
+        dt = datetime(2026, 3, 3, 4, 0, 0, tzinfo=timezone.utc)
+        result = reverse_next_run_at(dt, RecurringFrequency.WEEKLY)
+        assert result == datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc)
+
+    def test_reverse_fortnightly(self):
+        dt = datetime(2026, 3, 10, 4, 0, 0, tzinfo=timezone.utc)
+        result = reverse_next_run_at(dt, RecurringFrequency.FORTNIGHTLY)
+        assert result == datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc)
+
+    def test_reverse_monthly(self):
+        dt = datetime(2026, 3, 24, 4, 0, 0, tzinfo=timezone.utc)
+        result = reverse_next_run_at(dt, RecurringFrequency.MONTHLY)
+        assert result == datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc)
+
+    def test_reverse_monthly_year_boundary(self):
+        dt = datetime(2026, 1, 15, 4, 0, 0, tzinfo=timezone.utc)
+        result = reverse_next_run_at(dt, RecurringFrequency.MONTHLY)
+        assert result == datetime(2025, 12, 15, 4, 0, 0, tzinfo=timezone.utc)
+
+    def test_roundtrip_advance_reverse(self):
+        """advance then reverse returns the original date."""
+        original = datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc)
+        for freq in RecurringFrequency:
+            advanced = advance_next_run_at(original, freq)
+            reversed_back = reverse_next_run_at(advanced, freq)
+            assert reversed_back == original, f"Roundtrip failed for {freq.value}"
+
+
 class TestRecurringServiceUpdateTemplate:
     """Tests for RecurringService.update_template."""
 
@@ -518,6 +630,50 @@ class TestRecurringServiceUpdateTemplate:
 
         update_kwargs = mock_template_repo.update.call_args[1]
         assert update_kwargs["frequency"] == RecurringFrequency.MONTHLY
+
+    @pytest.mark.asyncio
+    async def test_frequency_change_recalculates_next_run_at(self):
+        """Changing frequency recalculates next_run_at from the last scheduled date."""
+        # Weekly template: last instance was Feb 17, next_run_at = Feb 24
+        template = _make_template(
+            frequency=RecurringFrequency.WEEKLY,
+            next_run_at=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),
+        )
+        service, mock_template_repo = self._make_service()
+        mock_template_repo.get_by_id.return_value = template
+        mock_template_repo.update.return_value = template
+
+        # Change to monthly: last scheduled = Feb 24 - 7 days = Feb 17
+        # New next_run_at = Feb 17 + 1 month = Mar 17
+        await service.update_template(
+            template_id=template.id,
+            user_id=template.user_id,
+            frequency=RecurringFrequency.MONTHLY,
+        )
+
+        update_kwargs = mock_template_repo.update.call_args[1]
+        expected = datetime(2026, 3, 17, 4, 0, 0, tzinfo=timezone.utc)
+        assert update_kwargs["next_run_at"] == expected
+
+    @pytest.mark.asyncio
+    async def test_same_frequency_does_not_recalculate(self):
+        """Setting the same frequency doesn't change next_run_at."""
+        template = _make_template(
+            frequency=RecurringFrequency.WEEKLY,
+            next_run_at=datetime(2026, 2, 24, 4, 0, 0, tzinfo=timezone.utc),
+        )
+        service, mock_template_repo = self._make_service()
+        mock_template_repo.get_by_id.return_value = template
+        mock_template_repo.update.return_value = template
+
+        await service.update_template(
+            template_id=template.id,
+            user_id=template.user_id,
+            frequency=RecurringFrequency.WEEKLY,
+        )
+
+        update_kwargs = mock_template_repo.update.call_args[1]
+        assert "next_run_at" not in update_kwargs
 
     @pytest.mark.asyncio
     async def test_update_template_not_found_raises(self):

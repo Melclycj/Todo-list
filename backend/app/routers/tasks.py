@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user_id
 from app.database import get_uow
 from app.schemas.common import ApiResponse, PaginationMeta
 from app.schemas.task import (
+    TaskBatchReorderRequest,
     TaskBulkDeleteRequest,
     TaskCreateRequest,
     TaskFilterParams,
@@ -139,3 +140,14 @@ async def update_task_order(
         manual_order=body.manual_order,
     )
     return ApiResponse.ok(TaskResponse.model_validate(task))
+
+
+@router.post("/reorder", response_model=ApiResponse[None])
+async def batch_reorder_tasks(
+    body: TaskBatchReorderRequest,
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    service: TaskService = Depends(_get_task_service),
+):
+    task_orders = [(item.id, item.manual_order) for item in body.tasks]
+    await service.batch_reorder_tasks(user_id=user_id, task_orders=task_orders)
+    return ApiResponse.ok(None)

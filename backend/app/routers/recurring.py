@@ -68,11 +68,21 @@ async def update_recurring(
     return ApiResponse.ok(RecurringTemplateResponse.model_validate(template))
 
 
-@router.delete("/{template_id}", response_model=ApiResponse[None])
+@router.post("/{template_id}/stop", response_model=ApiResponse[None])
 async def stop_recurring(
     template_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_current_user_id),
     service: RecurringService = Depends(_get_recurring_service),
 ):
     await service.stop_template(template_id=template_id, user_id=user_id)
+    return ApiResponse.ok(None)
+
+
+@router.delete("/{template_id}", response_model=ApiResponse[None])
+async def delete_recurring(
+    template_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(get_current_user_id),
+    service: RecurringService = Depends(_get_recurring_service),
+):
+    await service.delete_template(template_id=template_id, user_id=user_id)
     return ApiResponse.ok(None)
