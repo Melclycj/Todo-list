@@ -30,6 +30,27 @@
 >
 > **AppSec full close-out (done, 2026-07-02):** all 3 remaining blockers cleared — (1) `overlay-websocket/checklist.yaml` written (5 items, surfaced one new low finding FR15-SSE-004: logout doesn't kill an already-open SSE stream's stateless JWT, bounded by the existing 15-min token TTL); (2) RS evidence (`pentest/disposition.yaml` — genuine not-required disposition); (3) RC evidence (`recovery/backup-procedure.yaml` — real daily pg_dump backup, honestly flags no restore drill has ever been run). axios/react-router-dom findings re-filed as `remediated`. **Final decision: PASS** (`.appsec/decisions/fr15-sse-auth/appsec_release_decision.yaml`), independently confirmed via `appsec-sdk gate.check fr15-sse-auth` → exit 0. All 6 CSF functions PASS, 0 critical/high findings, redaction attested. Real residual risk shipping with this PASS (not blocking, but worth prioritizing): FR15-SSE-001 (medium — SSE stream has no per-user connection cap/rate limit, can exhaust the DB pool) and FR15-SSE-004 (low — logout doesn't actively kill open SSE streams). Suggest picking FR15-SSE-001 up as a future sprint task.
 
+### Retrospective
+
+**What went well:**
+- FR-16, FR-17, and NFR-09 landed cleanly with full Playwright E2E + axe coverage running in CI — no manual verification needed for any of the three.
+- FR-15's core fix (token out of the URL, into the `Authorization` header via a fetch-based stream) worked correctly on the first real test — live curl against the local stack confirmed the old `?token=` contract is rejected, and the manual EventStream check confirmed a push arrives within ~1s of a status change.
+- The AppSec evidence backfill, while heavier than expected, paid for itself: it caught two real production-dependency CVEs (`axios`, `react-router-dom`) that were completely unrelated to FR-15's actual code change — a good example of security tooling surfacing real value beyond the task that triggered it.
+- Using the local docker-compose stack as the target for headers/DAST-adjacent checks worked well given this project has no separate staging environment.
+
+**Problems encountered:**
+- Several AppSec/QA governance hooks fired on false positives this sprint — naive keyword scanning tripped on quoted historical status text, a commit message containing the word "vitest", and a shared test-account password that had to be disclosed to give login instructions. None were real issues; each required a quick investigation to confirm before moving on.
+- The AppSec evidence-validator agent's first re-validation pass declared `PASS` but omitted required schema fields (the redaction-attestation block, in particular) — the deterministic `appsec-sdk gate.check` disagreed and caught it. Lesson: verify agent-declared verdicts against the deterministic checker, don't trust the self-report alone.
+- Tried to inspect a long-lived SSE connection's network response body via a blocking tool call — this hung for ~55 minutes since the stream never terminates. Should have used a non-blocking approach (e.g. attaching a listener to the page's own EventSource) from the start.
+- The manual SSE-push test was initially confusing: a test task due "today" didn't affect the reminder message at all. Root cause: FR-07's reminder logic uses a 4am-to-4am day window, and a task due at midnight (the default when picking a date with no time) falls in the *previous* day's window, not the one the UI implies. Not a bug in FR-15, but a non-obvious FR-07 quirk worth remembering for future manual reminder testing.
+
+**New findings (added to backlog):**
+- `FR15-SSE-001` (medium) — SSE reminder stream has no per-user connection cap or rate limit; can exhaust the DB connection pool.
+- `FR15-SSE-004` (low) — logout doesn't terminate an already-open SSE stream (bounded by the existing 15-min access-token TTL).
+- DAST baseline scanning infra doesn't exist in this repo yet — needed before any future full release-readiness AppSec audit.
+
+**Spec drift check:** None found. `docs/api-spec.md` and `docs/frontend-spec.md` describe the reminder stream and view-mode/reorder/a11y surfaces at an architectural level that didn't reference the old buggy `?token=` behavior or the removed Task Board option, so nothing needed correcting.
+
 ---
 
 ## Backlog (prioritized — next sprint picks from top)
@@ -45,6 +66,7 @@
 - FR-18: Premium visual direction "Slate Studio" (locked) _(2026-06 UI plan, P1; do after NFR-10)_
 - AppSec: SSE `/reminder/stream` has no per-user connection cap / rate limit — one account can exhaust the DB connection pool and deny service to all users (medium, finding `FR15-SSE-001`, `.appsec/findings/fr15-sse-auth/`)
 - AppSec: `/auth/logout` doesn't terminate an already-open SSE stream (stateless JWT, no blocklist) — bounded by the existing 15-min access-token TTL, not urgent (low, finding `FR15-SSE-004`, `.appsec/findings/fr15-sse-auth/`)
+- Tech debt: Set up DAST baseline scanning infra (OWASP ZAP wrapper + `scripts/security/zap-baseline.sh`) — currently zero DAST capability in this repo; needed before a full release-readiness AppSec audit
 - FR-19: Auth first-impression redesign _(2026-06 UI plan, P1)_
 - NFR-11: Error states, error boundary & visual polish _(2026-06 UI plan, P2)_
 

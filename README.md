@@ -50,6 +50,14 @@ Open **http://localhost:8080**
 
 ## Changelog
 
+### v1.3.0 (2026-07-02)
+
+- **Fix**: SSE reminder stream authentication — access token moved out of the `?token=` URL query string into the `Authorization` header via a fetch-based stream client (`EventSource` can't set headers). Closes the token-in-URL/logs exposure and the silent 401→polling fallback. AppSec-reviewed; live-verified end-to-end (real-time push confirmed to arrive within ~1s of a task status change).
+- **Removed**: Non-functional "Task Board" view option from the view-mode dropdown, plus its dead code
+- **Reorder Undo**: Alt+↑/↓ drag-reorder now supports Undo; subtask delete and task/topic delete now require confirmation. Status-undo removed in favor of a forward-only status state machine.
+- **Accessibility baseline**: aria-labels across interactive controls, keyboard-driven reorder (Alt+↑/↓), full focus-trap + Escape handling on the task drawer, keyboard-accessible archive actions, contrast-compliant color tokens, visible focus rings. Axe reports 0 serious/critical violations across login/tasks/archive/recurring at 320/768/1440 viewports (enforced in CI).
+- **Dependency security fix**: `axios` and `react-router-dom` bumped to remediate high-severity CVEs (SSRF/prototype-pollution and deserialization RCE/XSS advisories) surfaced during an AppSec dependency audit.
+
 ### v1.2.1 (2026-04-12)
 
 - **Drop indicator**: 3px blue horizontal line at the insertion edge during drag reorder — appears above the target row when dragging up, below when dragging down
